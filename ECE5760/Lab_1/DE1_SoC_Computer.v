@@ -447,7 +447,7 @@ wire state_clock ;
 // current free words in audio interface
 reg [7:0] fifo_space ;
 // debug check of space
-assign LEDR = fifo_space ;
+//assign LEDR = fifo_space ;
 
 // use 4-byte-wide bus-master	 
 //assign bus_byte_enable = 4'b1111;
@@ -569,6 +569,44 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 	
 end // always @(posedge state_clock)
 
+//-------------Flashing LED---------------//
+always@(posedge CLOCK_50)begin
+	if (sine_out >= 16'hfae6) begin
+		LEDR[9:0] <= 16'b11_1111_1111;
+                end
+	else if (sine_out >= 16'he1cf) begin
+		LEDR[9:0] <= 16'b11_1111_1110;
+                end
+	else if (sine_out >= 16'hc8b8) begin
+		LEDR[9:0] <= 16'b11_1111_1100;
+                end
+	else if (sine_out >= 16'hafa1) begin
+		LEDR[9:0] <= 10'b11_1111_1000;
+                end
+	else if (sine_out >= 16'h968a) begin
+		LEDR[9:0] <= 10'b11_1111_0000;
+                end
+	else if (sine_out >= 16'h7d73) begin
+		LEDR[9:0] <= 10'b11_1110_0000;
+                end
+	else if (sine_out >= 16'h645c) begin
+		LEDR[9:0] <= 10'b11_1100_0000;
+                end
+	else if (sine_out >= 16'h4b45) begin
+		LEDR[9:0] <= 10'b11_1000_0000;
+                end
+	else if (sine_out >= 16'h322e) begin
+		LEDR[9:0] <= 10'b11_0000_0000;
+                end
+	else if (sine_out >= 16'h1917) begin
+		LEDR[9:0] <= 10'b10_0000_0000;
+                end
+                else begin
+		     LEDR[9:0] <= 10'b00_0000_0000;
+                end
+
+end
+//----------------------------------------//
 
 
 Computer_System The_System (
