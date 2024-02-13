@@ -574,34 +574,34 @@ reg [9:0] leds;
 assign LEDR[9:0] = leds[9:0];
 	
 always@(posedge CLOCK_50)begin
-	if (sine_out >= 16'hfae6) begin
-		leds[9:0] <= 16'b11_1111_1111;
+	if (sine_out_x[15:0] >= 16'hfae6) begin
+		leds[9:0] <= 10'b11_1111_1111;
                 end
-	else if (sine_out >= 16'he1cf) begin
-		leds[9:0] <= 16'b11_1111_1110;
+	else if (sine_out_x[15:0] >= 16'he1cf) begin
+		leds[9:0] <= 10'b11_1111_1110;
                 end
-	else if (sine_out >= 16'hc8b8) begin
-		leds[9:0] <= 16'b11_1111_1100;
+	else if (sine_out_x[15:0] >= 16'hc8b8) begin
+		leds[9:0] <= 10'b11_1111_1100;
                 end
-	else if (sine_out >= 16'hafa1) begin
+	else if (sine_out_x[15:0] >= 16'hafa1) begin
 		leds[9:0] <= 10'b11_1111_1000;
                 end
-	else if (sine_out >= 16'h968a) begin
+	else if (sine_out_x[15:0] >= 16'h968a) begin
 		leds[9:0] <= 10'b11_1111_0000;
                 end
-	else if (sine_out >= 16'h7d73) begin
+	else if (sine_out_x[15:0] >= 16'h7d73) begin
 		leds[9:0] <= 10'b11_1110_0000;
                 end
-	else if (sine_out >= 16'h645c) begin
+	else if (sine_out_x[15:0] >= 16'h645c) begin
 		leds[9:0] <= 10'b11_1100_0000;
                 end
-	else if (sine_out >= 16'h4b45) begin
+	else if (sine_out_x[15:0] >= 16'h4b45) begin
 		leds[9:0] <= 10'b11_1000_0000;
                 end
-	else if (sine_out >= 16'h322e) begin
+	else if (sine_out_x[15:0] >= 16'h322e) begin
 		leds[9:0] <= 10'b11_0000_0000;
                 end
-	else if (sine_out >= 16'h1917) begin
+	else if (sine_out_x[15:0] >= 16'h1917) begin
 		leds[9:0] <= 10'b10_0000_0000;
                 end
                 else begin
