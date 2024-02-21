@@ -391,39 +391,25 @@ wire signed [31:0] dt;
 wire [7:0] pio_clk;
 wire [7:0] pio_rst;
 //---------------------------------------------------//
-
+//The instantiation of the Lorenz system
 lorenz_system my_lorenz (.clk(pio_clk[0]), 
-								 .reset(pio_rst[0]), 
-								 .funct(0),
-								 .dt({{dt[26]},{dt[26]},{dt[26]},{dt[26]},{dt[26]},dt[26:0]}),
-								 .Initial_x({{initial_x[26]},{initial_x[26]},{initial_x[26]},{initial_x[26]},{initial_x[26]},initial_x[26:0]}),
-								 .Initial_y({{initial_y[26]},{initial_y[26]},{initial_y[26]},{initial_y[26]},{initial_y[26]},initial_y[26:0]}),
-								 .Initial_z({{initial_z[26]},{initial_z[26]},{initial_z[26]},{initial_z[26]},{initial_z[26]},initial_z[26:0]}), 
-								 .out_x(new_x),  //out
-								 .out_y(new_y),  //out
-								 .out_z(new_z),  //out
-								 .rho({{rho[26]},{rho[26]},{rho[26]},{rho[26]},{rho[26]},rho[26:0]}), 
-								 .sigma({{sigma[26]},{sigma[26]},{sigma[26]},{sigma[26]},{sigma[26]},sigma[26:0]}), 
-								 .beta({{beta[26]},{beta[26]},{beta[26]},{beta[26]},{beta[26]},beta[26:0]}), 
-								 .CLOCK_50(CLOCK_50)
-								 );
+			 .reset(pio_rst[0]), 
+			 .funct(0),
+			 //we manually signed extended the parameters to 32 bits to match the PIO bitwidth
+			 .dt({{dt[26]},{dt[26]},{dt[26]},{dt[26]},{dt[26]},dt[26:0]}),
+			 .Initial_x({{initial_x[26]},{initial_x[26]},{initial_x[26]},{initial_x[26]},{initial_x[26]},initial_x[26:0]}),
+			 .Initial_y({{initial_y[26]},{initial_y[26]},{initial_y[26]},{initial_y[26]},{initial_y[26]},initial_y[26:0]}),
+			 .Initial_z({{initial_z[26]},{initial_z[26]},{initial_z[26]},{initial_z[26]},{initial_z[26]},initial_z[26:0]}), 
+			 .out_x(new_x),  //out
+			 .out_y(new_y),  //out
+			 .out_z(new_z),  //out
+			 .rho({{rho[26]},{rho[26]},{rho[26]},{rho[26]},{rho[26]},rho[26:0]}), 
+			 .sigma({{sigma[26]},{sigma[26]},{sigma[26]},{sigma[26]},{sigma[26]},sigma[26:0]}), 
+			 .beta({{beta[26]},{beta[26]},{beta[26]},{beta[26]},{beta[26]},beta[26:0]}), 
+		         .CLOCK_50(CLOCK_50)
+);
 				 
-	/*						 
-lorenz_system my_lorenz (.clk(pio_clk[0]), 
-								 .reset(pio_rst[0]), 
-								 .funct(0),
-								 .dt(32'b000000000000_00000010_00000000000),
-								 .Initial_x({12'b111111111111, 20'b0}),
-								 .Initial_y({12'd0,20'b_0001_1001_1001_1001_1001}),
-								 .Initial_z({12'd25,20'd0}), 
-								 .out_x(new_x),  //out
-								 .out_y(new_y),  //out
-								 .out_z(new_z),  //out
-								 .rho(32'b000000011100_0000_0000_0000_0000_0000), 
-								 .sigma(32'b000000001010_0000_0000_0000_0000_0000), 
-								 .beta(32'b000000000010_1010_1010_1010_1010_1010), 
-								 .CLOCK_50(CLOCK_50)
-								 );*/
+	
 								 
 // ------------------- AUDIO FSM---------------------//
 reg [31:0] bus_addr ; // Avalon address
@@ -467,13 +453,18 @@ wire [31:0] incre_x;
 wire [31:0] incre_y;
 wire [31:0] incre_z;
 
+//instantiate the frequency accumulator table to find the accumulated value
 freq_LUT accum_x(new_x[25:20], incre_x);
 freq_LUT accum_y(new_y[25:20], incre_y);
 freq_LUT accum_z(new_z[25:20], incre_z);
 
+//instantiate the sine table to obtain the outputs to the audio
 sync_rom sineTable_x(CLOCK_50, dds_accum_x[31:24], sine_out_x[15:0]);
 sync_rom sineTable_y(CLOCK_50, dds_accum_y[31:24], sine_out_y[15:0]);
 sync_rom sineTable_z(CLOCK_50, dds_accum_z[31:24], sine_out_z[15:0]);
+
+//We integrate the three output sound signals and only shift 12 bits (due to the potential overflow) to
+//extend it to 32 bits
 assign sine_out = (sine_out_x << 12) + (sine_out_y << 12) + (sine_out_z << 12);
 
 // get some signals exposed
@@ -481,7 +472,7 @@ assign sine_out = (sine_out_x << 12) + (sine_out_y << 12) + (sine_out_z << 12);
 assign GPIO_0[0] = bus_write ;
 assign GPIO_0[1] = bus_read ;
 assign GPIO_0[2] = bus_ack ;
-//assign GPIO_0[3] = ??? ;
+
 
 always @(posedge CLOCK_50) begin //CLOCK_50
 
@@ -570,6 +561,7 @@ always @(posedge CLOCK_50) begin //CLOCK_50
 end // always @(posedge state_clock)
 
 //-------------Flashing LED---------------//
+//This part is just using the LEDs on the SoC as a sound intensity indicator
 reg [9:0] leds;
 assign LEDR[9:0] = leds[9:0];
 	
@@ -640,7 +632,7 @@ Computer_System The_System (
 
 	//------------------PIOs----------------//
 
-	
+	//the created PIO ports for the connection between the HPS and FPGA
 	
 	 .pio_clk_external_connection_export (pio_clk),        
 	 .pio_rho_external_connection_export (rho),     
@@ -918,7 +910,7 @@ module integrator(out,funct,InitialOut,clk,reset,dt);
 	signed_mult multiplier_1 (.out(funct_new),
 							  	 .a(funct),
 								 .b(dt)
-							    // .b(32'b000000000000_00000010_00000000000)
+							   
 							  );
 
 endmodule
@@ -934,7 +926,7 @@ module signed_mult (out, a, b);
 	// intermediate full bit length
 	wire 	signed	[53:0]	mult_out;
 	assign mult_out = a * b;
-	// select bits for 7.20 fixed point
+	// select bits for 12.20 fixed point
 	assign out = {mult_out[53], mult_out[50:20]};
 endmodule
 //////////////////////////////////////////////////
