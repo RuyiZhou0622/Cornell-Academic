@@ -17,6 +17,7 @@ module mandelbrot_iterator (
     parameter DONE = 2'b10;
     parameter MAX = 10'd1000;
 
+
     reg signed [26:0] Z_N_r_sq;
     reg signed [26:0] Z_N_i_sq;
     reg signed [26:0] Z_N_r;
@@ -28,7 +29,9 @@ module mandelbrot_iterator (
     wire signed [26:0] Z_N_i_next;
     wire signed [26:0] Z_NR_temp;
     wire signed [26:0] Z_NRI_temp;
-
+    
+    wire signed [26:0] minus_2;
+	assign minus_2 = 27'h7000000;
 
     wire signed [26:0] Z_NR;
     
@@ -37,9 +40,10 @@ module mandelbrot_iterator (
     wire signed [26:0] result;
     reg  [1:0] state;
     reg  [1:0] next_state;
+    reg signed [26:0] temp_result;
     
     //output the number of iterations
-    assign iteration = out_num;
+    assign iteration = (out_num == 0) ? 1: out_num;
 
     always @(posedge clk or posedge rst)begin
         state <= next_state;
@@ -56,23 +60,32 @@ module mandelbrot_iterator (
             case(state)
                 IDLE: begin
                     next_state <= CALC;
+			temp_result <= result;
                 end
                 CALC: begin
-                    if(result >  26'h2000000)begin
+		if(Z_NR_temp < 27'h1000000 || Z_NR_temp >  minus_2 || Z_NRI_temp < 27'h1000000 || Z_NRI_temp > minus_2)begin
+                    if(temp_result >  27'h2000000)begin
                         num_iterations <= num_iterations;
+			
                     end else begin
                         num_iterations <= num_iterations + 1;
+			temp_result <= result;
                     end
                     Z_N_r_sq <= Z_N_r_sq_temp;
                     Z_N_i_sq <= Z_N_i_sq_temp;
                     Z_N_r <= Z_NR_temp;
                     Z_N_i <= Z_NRI_temp;
-                    if (result > 26'h2000000 || num_iterations >= 10'd999) begin
+                    if (temp_result > 27'h2000000 || num_iterations >= 10'd999) begin
                 
                         next_state <= DONE;
                     end else begin
-                        //next_state <= CALC;
+                        next_state <= CALC;
                     end
+		end
+		else begin
+			num_iterations <= num_iterations;
+			next_state <= DONE;
+		end
                 end
                 DONE: begin
                     out_num <= num_iterations-1;
@@ -84,26 +97,6 @@ module mandelbrot_iterator (
             endcase
         end
     end
-
-    // always@(posedge clk or posedge rst)begin
-    //     if(rst)begin
-    //         num_iterations <= 0;
-    //         Z_N_r_sq <= 0;
-    //         Z_N_i_sq <= 0;
-    //         Z_N_r <= 0;
-    //         Z_N_i <= 0;
-
-    //     end else begin
-    //         num_iterations <= num_iterations + 1;
-
-    //         Z_N_r_sq <= Z_N_r_sq_temp;
-    //         Z_N_i_sq <= Z_N_i_sq_temp;
-    //         Z_N_r <= Z_NR_temp;
-    //         Z_N_i <= Z_NRI_temp;
-    //     end
-
-
-    // end
 
 
     assign Z_NR_temp = Z_N_r_sq - Z_N_i_sq + Cr;
@@ -160,9 +153,7 @@ module unsigned_mult (out, a, b);
 	// intermediate full bit length
 	wire 	signed	[53:0]	mult_out;
 	assign mult_out = a * b;
-	// select bits for 7.20 fixed point
 	assign out = mult_out[49:23];
 endmodule
-
 
 
