@@ -407,24 +407,24 @@ always@(posedge M10k_pll) begin
 	end
 	// Otherwiser repeatedly write a large checkerboard to memory
 	else begin
-		if (arbiter_state == 8'd_0) begin
+		if (arbiter_state == 8'd_0 && done == 1) begin
 			vga_reset <= 1'b_0 ;
 			write_enable <= 1'b_1 ;
 			write_address <= (19'd_640 * y_coord) + x_coord ;
 			if (x_coord < 10'd_320) begin
 				if (y_coord < 10'd_240) begin
-					write_data <= 8'b_111_000_00 ;
+					write_data <= color_reg ;
 				end
 				else begin
-					write_data <= 8'b_000_111_00 ;
+					write_data <= color_reg ;
 				end
 			end
 			else begin
 				if (y_coord < 10'd_240) begin
-					write_data <= 8'b_000_000_11 ;
+					write_data <= color_reg ;
 				end
 				else begin
-					write_data <= 8'b_111_111_00 ;
+					write_data <= color_reg ;
 				end
 			end
 			x_coord <= (x_coord==10'd_639)?10'd_0:(x_coord + 10'd_1) ;
@@ -436,27 +436,27 @@ end
 
 // Instantiate memory
 M10K_1000_8 pixel_data( .q(M10k_out), // contains pixel color (8 bit) for display
-								.d(write_data),
-								.write_address(write_address),
-								.read_address((19'd_640*next_y) + next_x),
-								.we(write_enable),
-								.clk(M10k_pll)
+						.d(write_data),
+						.write_address(write_address),
+						.read_address((19'd_640*next_y) + next_x),
+						.we(write_enable),
+						.clk(M10k_pll)
 );
 
 // Instantiate VGA driver					
 vga_driver DUT   (	.clock(vga_pll), 
-							.reset(vga_reset),
-							.color_in(M10k_out),	// Pixel color (8-bit) from memory
-							.next_x(next_x),		// This (and next_y) used to specify memory read address
-							.next_y(next_y),		// This (and next_x) used to specify memory read address
-							.hsync(VGA_HS),
-							.vsync(VGA_VS),
-							.red(VGA_R),
-							.green(VGA_G),
-							.blue(VGA_B),
-							.sync(VGA_SYNC_N),
-							.clk(VGA_CLK),
-							.blank(VGA_BLANK_N)
+					.reset(vga_reset),
+					.color_in(M10k_out),	// Pixel color (8-bit) from memory
+					.next_x(next_x),		// This (and next_y) used to specify memory read address
+					.next_y(next_y),		// This (and next_x) used to specify memory read address
+					.hsync(VGA_HS),
+					.vsync(VGA_VS),
+					.red(VGA_R),
+					.green(VGA_G),
+					.blue(VGA_B),
+					.sync(VGA_SYNC_N),
+					.clk(VGA_CLK),
+					.blank(VGA_BLANK_N)
 );
 
 
@@ -467,6 +467,8 @@ parameter [1:0] STATE0 = 0;
 parameter [1:0] STATE1 = 1;
 parameter [1:0] STATE2 = 2;
 parameter [1:0] STATE3 = 3;
+parameter signed [26:0] one =  27'b0001_000_0000_0000_0000_0000_0000;
+parameter signed [26:0] nega_two = 27'b1110_000_0000_0000_0000_0000_0000;
 reg signed [26:0] cr_inter_temp;
 reg signed [26:0] ci_inter_temp;
 wire done;
@@ -492,26 +494,26 @@ assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
 
 	always@(*) begin
 		if(~KEY[0])begin
-			cr_inter_temp <= 27'b1110_000_0000_0000_0000_0000_0000; // -2
-			ci_inter_temp <= 27'b0001_000_0000_0000_0000_0000_0000; // 1
+			cr_inter_temp <= nega_two; // -2
+			ci_inter_temp <= one; // 1
 		end
 		else begin
-			case(state_ite) begin
+			case(state_ite)
 				STATE0: begin
-					cr_inter_temp <= 27'b1110_000_0000_0000_0000_0000_0000; // -2
-					ci_inter_temp <= 27'b0001_000_0000_0000_0000_0000_0000; // 1
+					cr_inter_temp <= nega_two; // -2 7000000
+					ci_inter_temp <= one; // 1  8000000
 					next_state_ite <= done ? STATE1 : STATE0;
 				end
 				STATE1: begin
-					if(cr_inter_temp <  27'b0001_000_0000_0000_0000_0000_0000 && done == 1) begin
+					if(cr_inter_temp <  one && done == 1) begin
 						cr_inter_temp <= cr_inter_temp + dx;
 						ci_inter_temp <= ci_inter_temp ;
 						next_state_ite <= STATE1;
-					end else if(cr_inter_temp ==  27'b0001_000_0000_0000_0000_0000_0000 && done == 1 ) begin
+					end else if(cr_inter_temp >=  one && done == 1 ) begin
 						cr_inter_temp <= 0;
 						ci_inter_temp <= ci_inter_temp - dy;
 						next_state_ite <= STATE1;
-					end else if (cr_inter_temp ==  27'b0001_000_0000_0000_0000_0000_0000 && ci_inter_temp == 27'b1111_000_0000_0000_0000_0000_0000 && done == 1) begin
+					end else if (cr_inter_temp ==  one && ci_inter_temp == nega_two && done == 1) begin
 						next_state_ite <= STATE2;
 					end else begin
 						cr_inter_temp <= cr_inter_temp ;
@@ -530,7 +532,7 @@ assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
 
 mandelbrot_iterator inter1(
     .clk(CLOCK_50),
-    .rst(inter_reset),
+    .rst(~KEY[0]),
     .Cr(cr_inter),
     .Ci(ci_inter),
     .iteration(iteration_num),
@@ -540,7 +542,8 @@ mandelbrot_iterator inter1(
 //--------------------LOOK-UP Table to convert iteration # to colors----------------------------//
 wire [9:0] counter;
 assign counter = iteration_num;
-paramter [9:0] max_iterations = 10'd1000;
+parameter [9:0] max_iterations = 10'd1000;
+reg [7:0] color_reg;
 
 always@(*)begin
 	if (counter >= max_iterations) begin
@@ -586,13 +589,13 @@ Computer_System The_System (
 	// FPGA Side
 	////////////////////////////////////
 	.vga_pio_locked_export			(vga_pll_lock),           //       vga_pio_locked.export
-	.vga_pio_outclk0_clk				(vga_pll),              //      vga_pio_outclk0.clk
+	.vga_pio_outclk0_clk			(vga_pll),              //      vga_pio_outclk0.clk
 	.m10k_pll_locked_export			(M10k_pll_locked),          //      m10k_pll_locked.export
 	.m10k_pll_outclk0_clk			(M10k_pll),            //     m10k_pll_outclk0.clk
 
 	// Global signals
-	.system_pll_ref_clk_clk					(CLOCK_50),
-	.system_pll_ref_reset_reset			(1'b0),
+	.system_pll_ref_clk_clk			(CLOCK_50),
+	.system_pll_ref_reset_reset		(1'b0),
 	
 
 	////////////////////////////////////
@@ -972,7 +975,7 @@ module mandelbrot_iterator (
 
     always @(posedge clk or posedge rst)begin
         state <= next_state;
-		done_signal <= 0;
+	
         if(rst)begin
             next_state <= IDLE;
             num_iterations <= 1;
@@ -981,6 +984,7 @@ module mandelbrot_iterator (
             Z_N_r <= 0;
             Z_N_i <= 0;
             out_num <= 0;
+			done_signal <= 0;
         end
         else begin
             case(state)
@@ -1021,6 +1025,7 @@ module mandelbrot_iterator (
                 end
             default: begin next_state <= IDLE;
                            num_iterations <= 0;
+						   done_signal <= 0;
                      end
             endcase
         end
