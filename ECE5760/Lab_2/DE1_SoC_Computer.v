@@ -411,7 +411,8 @@ always@(posedge M10k_pll) begin
 			vga_reset <= 1'b_0 ;
 			write_enable <= 1'b_1 ;
 			write_address <= (19'd_640 * y_coord) + x_coord ;
-			if (x_coord < 10'd_320) begin
+			write_data <= color_reg ;
+		/*	if (x_coord < 10'd_320) begin
 				if (y_coord < 10'd_240) begin
 					write_data <= color_reg ;
 				end
@@ -427,9 +428,15 @@ always@(posedge M10k_pll) begin
 					write_data <= color_reg ;
 				end
 			end
+			*/
 			x_coord <= (x_coord==10'd_639)?10'd_0:(x_coord + 10'd_1) ;
 			y_coord <= (x_coord==10'd_639)?((y_coord==10'd_479)?10'd_0:(y_coord+10'd_1)):y_coord ;
 			arbiter_state <= 8'd_0 ;
+		end
+		else begin
+			write_enable <= 1'b_0 ;
+			x_coord <= x_coord;
+			y_coord <= y_coord;
 		end
 	end
 end
@@ -463,12 +470,15 @@ vga_driver DUT   (	.clock(vga_pll),
 //wire inter_reset;
 wire signed [26:0] cr_inter;
 wire signed [26:0] ci_inter;
+wire signed [26:0] end_x;
+wire signed [26:0] end_y;
 parameter [1:0] STATE0 = 0;
 parameter [1:0] STATE1 = 1;
 parameter [1:0] STATE2 = 2;
 parameter [1:0] STATE3 = 3;
-parameter signed [26:0] one =  27'b0001_000_0000_0000_0000_0000_0000;
-parameter signed [26:0] nega_two = 27'b1110_000_0000_0000_0000_0000_0000;
+parameter signed [26:0] one =  27'b0001_000_0000_0000_0000_0000_0000;     //0800000
+parameter signed [26:0] nega_one = 27'b1111_000_0000_0000_0000_0000_0000; //7800000
+parameter signed [26:0] nega_two = 27'b1110_000_0000_0000_0000_0000_0000; //7000000
 reg signed [26:0] cr_inter_temp;
 reg signed [26:0] ci_inter_temp;
 wire done;
@@ -481,10 +491,16 @@ assign ci_inter = ci_inter_temp;
 
 wire signed [26:0] dx;
 wire signed [26:0] dy;
-assign dx[26:0] = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
-assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+//assign dx[26:0] = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
+//assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+assign dx[26:0] = 27'd39383;
+assign dy[26:0] = 27'd35025;
 
-	always@(posedge CLOCK_50  ) begin
+// assign the end coordiantes
+assign end_x[26:0] = 27'd8388521;   // 1
+assign end_y[26:0] = -27'd8388367;  //-1
+
+	always@(posedge M10k_pll  ) begin
 	//always@(posedge CLOCK_50 ) begin
 		if( ~KEY[0])begin 
 			state_ite <= STATE0;
@@ -494,26 +510,26 @@ assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
 
 	always@(*) begin
 		if(~KEY[0])begin
-			cr_inter_temp <= nega_two; // -2
-			ci_inter_temp <= one; // 1
+			cr_inter_temp <= -27'd16777216; // -2
+			ci_inter_temp <=  27'd8388608;  // 1
 		end
 		else begin
 			case(state_ite)
 				STATE0: begin
-					cr_inter_temp <= nega_two; // -2 7000000
-					ci_inter_temp <= one; // 1  8000000
+					cr_inter_temp <= -27'd16777216; // -2 7000000
+					ci_inter_temp <=  27'd8388608; // 1  8000000
 					next_state_ite <= done ? STATE1 : STATE0;
 				end
 				STATE1: begin
-					if(cr_inter_temp <  one && done == 1) begin
+					if((cr_inter_temp < end_x) && done == 1) begin
 						cr_inter_temp <= cr_inter_temp + dx;
 						ci_inter_temp <= ci_inter_temp ;
 						next_state_ite <= STATE1;
-					end else if(cr_inter_temp >=  one && done == 1 ) begin
+					end else if((cr_inter_temp >=  end_x) && done == 1 ) begin
 						cr_inter_temp <= 0;
 						ci_inter_temp <= ci_inter_temp - dy;
 						next_state_ite <= STATE1;
-					end else if (cr_inter_temp ==  one && ci_inter_temp == nega_two && done == 1) begin
+					end else if ((cr_inter_temp >=  end_x) && (ci_inter_temp <= end_y) && (done == 1)) begin
 						next_state_ite <= STATE2;
 					end else begin
 						cr_inter_temp <= cr_inter_temp ;
@@ -531,7 +547,7 @@ assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
 
 
 mandelbrot_iterator inter1(
-    .clk(CLOCK_50),
+    .clk(M10k_pll),
     .rst(~KEY[0]),
     .Cr(cr_inter),
     .Ci(ci_inter),
@@ -1021,7 +1037,7 @@ module mandelbrot_iterator (
                 DONE: begin
                     out_num <= num_iterations-1;
 					done_signal <= 1;
-                    next_state <= DONE;
+                    next_state <= IDLE;
                 end
             default: begin next_state <= IDLE;
                            num_iterations <= 0;
