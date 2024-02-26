@@ -407,7 +407,7 @@ always@(posedge M10k_pll) begin
 	end
 	// Otherwiser repeatedly write a large checkerboard to memory
 	else begin
-		if (arbiter_state == 8'd_0 && done == 1) begin
+		if (arbiter_state == 8'd_0 && done_ite == 1) begin
 			vga_reset <= 1'b_0 ;
 			write_enable <= 1'b_1 ;
 			write_address <= (19'd_640 * y_coord) + x_coord ;
@@ -434,6 +434,7 @@ always@(posedge M10k_pll) begin
 			arbiter_state <= 8'd_0 ;
 		end
 		else begin
+			write_data <= write_data ;
 			write_enable <= 1'b_0 ;
 			x_coord <= x_coord;
 			y_coord <= y_coord;
@@ -466,10 +467,20 @@ vga_driver DUT   (	.clock(vga_pll),
 					.blank(VGA_BLANK_N)
 );
 
+mandelbrot_iterator inter1(
+    .clk(M10k_pll),
+    .rst(~KEY[0]),
+    .Cr(cr_inter),
+    .Ci(ci_inter),
+    .iteration(iteration_num),
+	.done(done_ite)
+);
+
 
 //wire inter_reset;
 wire signed [26:0] cr_inter;
 wire signed [26:0] ci_inter;
+
 wire signed [26:0] end_x;
 wire signed [26:0] end_y;
 parameter [1:0] STATE0 = 0;
@@ -481,7 +492,7 @@ parameter signed [26:0] nega_one = 27'b1111_000_0000_0000_0000_0000_0000; //7800
 parameter signed [26:0] nega_two = 27'b1110_000_0000_0000_0000_0000_0000; //7000000
 reg signed [26:0] cr_inter_temp;
 reg signed [26:0] ci_inter_temp;
-wire done;
+wire done_ite;
 wire [9:0] iteration_num;
 
 reg [2:0] state_ite, next_state_ite;
@@ -493,44 +504,41 @@ wire signed [26:0] dx;
 wire signed [26:0] dy;
 //assign dx[26:0] = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
 //assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-assign dx[26:0] = 27'd39383;
-assign dy[26:0] = 27'd35025;
+assign dx[26:0] = 27'sd39383;
+assign dy[26:0] = 27'sd35025;
 
 // assign the end coordiantes
-assign end_x[26:0] = 27'd8388521;   // 1
-assign end_y[26:0] = -27'd8388367;  //-1
+assign end_x[26:0] = 27'sd8388521;   // 1  27'b11110000001011010000111101
+assign end_y[26:0] = -27'sd8388367;  //-1
 
-	always@(posedge M10k_pll  ) begin
-	//always@(posedge CLOCK_50 ) begin
-		if( ~KEY[0])begin 
-			state_ite <= STATE0;
-		end else
-			state_ite <= next_state_ite;
-	end
 
-	always@(*) begin
+	always@(posedge M10k_pll) begin
+		state_ite <= next_state_ite;
 		if(~KEY[0])begin
-			cr_inter_temp <= -27'd16777216; // -2
-			ci_inter_temp <=  27'd8388608;  // 1
+			cr_inter_temp <= -27'sd16777216; // -2
+			ci_inter_temp <=  27'sd8388608;  // 1
+			state_ite <= STATE0;
 		end
 		else begin
 			case(state_ite)
 				STATE0: begin
-					cr_inter_temp <= -27'd16777216; // -2 7000000
-					ci_inter_temp <=  27'd8388608; // 1  8000000
-					next_state_ite <= done ? STATE1 : STATE0;
+					cr_inter_temp <= -27'sd16777216; // -2 7000000
+					ci_inter_temp <=  27'sd8388608; // 1  8000000
+					next_state_ite <= done_ite ? STATE1 : STATE0;
 				end
 				STATE1: begin
-					if((cr_inter_temp < end_x) && done == 1) begin
+					if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
 						cr_inter_temp <= cr_inter_temp + dx;
 						ci_inter_temp <= ci_inter_temp ;
 						next_state_ite <= STATE1;
-					end else if((cr_inter_temp >=  end_x) && done == 1 ) begin
-						cr_inter_temp <= 0;
-						ci_inter_temp <= ci_inter_temp - dy;
-						next_state_ite <= STATE1;
-					end else if ((cr_inter_temp >=  end_x) && (ci_inter_temp <= end_y) && (done == 1)) begin
-						next_state_ite <= STATE2;
+					end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
+						if(ci_inter_temp <= end_y) begin
+					 		next_state_ite <= STATE2;
+						end else begin
+							cr_inter_temp <= -27'sd16777216;
+							ci_inter_temp <= ci_inter_temp - dy;
+							next_state_ite <= STATE1;
+						end
 					end else begin
 						cr_inter_temp <= cr_inter_temp ;
 						ci_inter_temp <= ci_inter_temp ;
@@ -540,20 +548,14 @@ assign end_y[26:0] = -27'd8388367;  //-1
 				STATE2:begin 
 					next_state_ite <= STATE2;
 				end
+				
+				
 				default: begin next_state_ite <= STATE0; end
 			endcase
 		end
 	end
 
 
-mandelbrot_iterator inter1(
-    .clk(M10k_pll),
-    .rst(~KEY[0]),
-    .Cr(cr_inter),
-    .Ci(ci_inter),
-    .iteration(iteration_num),
-	.done(done)
-);
 
 //--------------------LOOK-UP Table to convert iteration # to colors----------------------------//
 wire [9:0] counter;
@@ -565,33 +567,34 @@ always@(*)begin
 	if (counter >= max_iterations) begin
 		color_reg <= 8'b_000_000_00 ; // black
 	end
-	else if (counter >= (max_iterations >>> 1)) begin
+	else if (counter >= (max_iterations >>> 1)) begin //500
 		color_reg <= 8'b_011_001_00 ; // white
 	end
-	else if (counter >= (max_iterations >>> 2)) begin
+	else if (counter >= (max_iterations >>> 2)) begin //250
 		color_reg <= 8'b_011_001_00 ;
 	end
-	else if (counter >= (max_iterations >>> 3)) begin
+	else if (counter >= (max_iterations >>> 3)) begin //125
 		color_reg <= 8'b_101_010_01 ;
 	end
-	else if (counter >= (max_iterations >>> 4)) begin
+	else if (counter >= (max_iterations >>> 4)) begin //62
 		color_reg <= 8'b_011_001_01 ;
 	end
-	else if (counter >= (max_iterations >>> 5)) begin
+	else if (counter >= (max_iterations >>> 5)) begin //31
 		color_reg <= 8'b_001_001_01 ;
 	end
-	else if (counter >= (max_iterations >>> 6)) begin
+	else if (counter >= (max_iterations >>> 6)) begin //15
 		color_reg <= 8'b_011_010_10 ;
 	end
-	else if (counter >= (max_iterations >>> 7)) begin
+	else if (counter >= (max_iterations >>> 7)) begin //7
 		color_reg <= 8'b_010_100_10 ;
 	end
-	else if (counter >= (max_iterations >>> 8)) begin
+	else if (counter >= (max_iterations >>> 8)) begin //3
 		color_reg <= 8'b_010_100_10 ;
 	end
 	else begin
 		color_reg <= 8'b_010_100_10 ;
 	end
+
 end
 //----------------------------------------------------------------------------------------------//
 
@@ -1031,12 +1034,13 @@ module mandelbrot_iterator (
 					end
 					else begin
 						num_iterations <= num_iterations;
+						done_signal <= 1;
 						next_state <= DONE;
 					end
                 end
                 DONE: begin
                     out_num <= num_iterations-1;
-					done_signal <= 1;
+					done_signal <= 0;
                     next_state <= IDLE;
                 end
             default: begin next_state <= IDLE;
