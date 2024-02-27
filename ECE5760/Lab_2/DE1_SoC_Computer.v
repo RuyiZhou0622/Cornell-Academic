@@ -382,7 +382,7 @@ wire 		[7:0] 	M10k_out ;
 reg 		[7:0] 	write_data ;
 reg 		[18:0] 	write_address ;
 reg 		[18:0] 	read_address ;
-reg 					write_enable ;
+wire 					write_enable ;
 
 // M10k memory clock
 wire 					M10k_pll ;
@@ -402,16 +402,16 @@ always@(posedge M10k_pll) begin
 	if (~KEY[0]) begin
 		arbiter_state <= 8'd_0 ;
 		vga_reset <= 1'b_1 ;
-		x_coord <= 10'd_0 ;
-		y_coord <= 10'd_0 ;
+	//	x_coord <= 10'd_0 ;
+	// y_coord <= 10'd_0 ;
 	end
 	// Otherwiser repeatedly write a large checkerboard to memory
 	else begin
 		if (arbiter_state == 8'd_0 && done_ite == 1) begin
 			vga_reset <= 1'b_0 ;
-			write_enable <= 1'b_1 ;
-			write_address <= (19'd_640 * y_coord) + x_coord ;
-			write_data <= color_reg ;
+			//write_enable <= 1'b_1 ;
+		//	write_address <= (19'd_640 * y_coord) + x_coord ;
+		//	write_data <= color_reg ;
 		/*	if (x_coord < 10'd_320) begin
 				if (y_coord < 10'd_240) begin
 					write_data <= color_reg ;
@@ -429,15 +429,15 @@ always@(posedge M10k_pll) begin
 				end
 			end
 			*/
-			x_coord <= (x_coord==10'd_639)?10'd_0:(x_coord + 10'd_1) ;
-			y_coord <= (x_coord==10'd_639)?((y_coord==10'd_479)?10'd_0:(y_coord+10'd_1)):y_coord ;
+			//x_coord <= (x_coord==10'd_639)?10'd_0:(x_coord + 10'd_1) ;
+		//	y_coord <= (x_coord==10'd_639)?((y_coord==10'd_479)?10'd_0:(y_coord+10'd_1)):y_coord ;
 			arbiter_state <= 8'd_0 ;
 		end
 		else begin
-			write_data <= write_data ;
-			write_enable <= 1'b_0 ;
-			x_coord <= x_coord;
-			y_coord <= y_coord;
+			//write_data <= write_data ;
+		//	write_enable <= 1'b_0 ;
+			//x_coord <= x_coord;
+			//y_coord <= y_coord;
 		end
 	end
 end
@@ -447,7 +447,7 @@ M10K_1000_8 pixel_data( .q(M10k_out), // contains pixel color (8 bit) for displa
 						.d(write_data),
 						.write_address(write_address),
 						.read_address((19'd_640*next_y) + next_x),
-						.we(write_enable),
+						.we(done_ite),
 						.clk(M10k_pll)
 );
 
@@ -511,12 +511,15 @@ assign dy[26:0] = 27'sd35025;
 assign end_x[26:0] = 27'sd8388521;   // 1  27'b11110000001011010000111101
 assign end_y[26:0] = -27'sd8388367;  //-1
 
+//assign write_enable = done_ite ? 1:0;
 
 	always@(posedge M10k_pll) begin
 		state_ite <= next_state_ite;
 		if(~KEY[0])begin
 			cr_inter_temp <= -27'sd16777216; // -2
 			ci_inter_temp <=  27'sd8388608;  // 1
+			x_coord <= 10'd_0 ;
+			y_coord <= 10'd_0 ;
 			state_ite <= STATE0;
 		end
 		else begin
@@ -530,20 +533,34 @@ assign end_y[26:0] = -27'sd8388367;  //-1
 					if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
 						cr_inter_temp <= cr_inter_temp + dx;
 						ci_inter_temp <= ci_inter_temp ;
+						x_coord <= (x_coord==10'd_639)?10'd_0:(x_coord + 10'd_1) ;
+					//	write_enable <= 1'b_1 ;
+						write_data <= color_reg ;
 						next_state_ite <= STATE1;
 					end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
 						if(ci_inter_temp <= end_y) begin
+					//		write_enable <= 1'b_0 ;
 					 		next_state_ite <= STATE2;
 						end else begin
 							cr_inter_temp <= -27'sd16777216;
+							x_coord <= 10'd0;
 							ci_inter_temp <= ci_inter_temp - dy;
+						//	y_coord <= (x_coord==10'd_639)?((y_coord==10'd_479)?10'd_0:(y_coord+10'd_1)):y_coord ;
+							y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
+					//		write_enable <= 1'b_1 ;
+							write_data <= color_reg ;
 							next_state_ite <= STATE1;
 						end
 					end else begin
 						cr_inter_temp <= cr_inter_temp ;
 						ci_inter_temp <= ci_inter_temp ;
+						x_coord <= x_coord;
+						y_coord <= y_coord;
+					//	write_enable <= 1'b_0 ;
+						write_data <= write_data ;
 						next_state_ite <= STATE1;
 					end
+					write_address <= (19'd_640 * y_coord) + x_coord ;
 				end
 				STATE2:begin 
 					next_state_ite <= STATE2;
@@ -1008,9 +1025,15 @@ module mandelbrot_iterator (
         else begin
             case(state)
                 IDLE: begin
+                    num_iterations <= 1;
 					done_signal <= 0;
                     next_state <= CALC;
 					temp_result <= result;
+					Z_N_r_sq <= 0;
+            		Z_N_i_sq <= 0;
+            		Z_N_r <= 0;
+            		Z_N_i <= 0;
+            		out_num <= 0;
                 end
                 CALC: begin
 					if(Z_NR_temp < 27'h1000000 || Z_NR_temp >  minus_2 || Z_NRI_temp < 27'h1000000 || Z_NRI_temp > minus_2)begin
@@ -1020,27 +1043,44 @@ module mandelbrot_iterator (
              	       end else begin
                         num_iterations <= num_iterations + 1;
 						temp_result <= result;
+                        end
+                        Z_N_r_sq <= Z_N_r_sq_temp;
+                        Z_N_i_sq <= Z_N_i_sq_temp;
+                        Z_N_r <= Z_NR_temp;
+                        Z_N_i <= Z_NRI_temp;
+                        if (temp_result > 27'h2000000 || num_iterations >= 10'd999) begin
+                            done_signal <= 0;
+                            next_state <= DONE;
+                        end else begin
+                            next_state <= CALC;
+                        end
+					end
+					else begin
+						num_iterations <= num_iterations;
+						done_signal <= 0;
+						next_state <= DONE;
+					end
+                    /*
+                     if(result >  26'h2000000)begin
+                        num_iterations <= num_iterations;
+                    end else begin
+                        num_iterations <= num_iterations + 1;
                     end
                     Z_N_r_sq <= Z_N_r_sq_temp;
                     Z_N_i_sq <= Z_N_i_sq_temp;
                     Z_N_r <= Z_NR_temp;
                     Z_N_i <= Z_NRI_temp;
-                    if (temp_result > 27'h2000000 || num_iterations >= 10'd999) begin
+                    if (result > 26'h2000000 || num_iterations >= 10'd999) begin
                 
                         next_state <= DONE;
                     end else begin
                         next_state <= CALC;
                     end
-					end
-					else begin
-						num_iterations <= num_iterations;
-						done_signal <= 1;
-						next_state <= DONE;
-					end
+                    */
                 end
                 DONE: begin
                     out_num <= num_iterations-1;
-					done_signal <= 0;
+					done_signal <= 1;
                     next_state <= IDLE;
                 end
             default: begin next_state <= IDLE;
@@ -1079,6 +1119,7 @@ module mandelbrot_iterator (
     assign result = Z_N_i_sq_temp + Z_N_r_sq_temp ;
     
 endmodule
+
 
 //////////////////////////////////////////////////
 //// signed mult of 4.23 format 2'comp////////////
