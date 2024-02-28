@@ -502,10 +502,10 @@ assign ci_inter = ci_inter_temp;
 
 wire signed [26:0] dx;
 wire signed [26:0] dy;
-//assign dx[26:0] = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
-//assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-assign dx[26:0] = 27'sd39383;
-assign dy[26:0] = 27'sd35025;
+assign dx[26:0] = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
+assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+//assign dx[26:0] = 27'sd39383;
+//assign dy[26:0] = 27'sd35025;
 
 // assign the end coordiantes
 assign end_x[26:0] = 27'sd8388521;   // 1  27'b11110000001011010000111101
@@ -577,41 +577,45 @@ assign end_y[26:0] = -27'sd8388367;  //-1
 //--------------------LOOK-UP Table to convert iteration # to colors----------------------------//
 wire [9:0] counter;
 assign counter = iteration_num;
-parameter [9:0] max_iterations = 10'd1000;
+parameter [9:0] max_iterations = 10'd999;
 reg [7:0] color_reg;
 
 always@(*)begin
-	if (counter >= max_iterations) begin
-		color_reg <= 8'b_000_000_00 ; // black
-	end
-	else if (counter >= (max_iterations >>> 1)) begin //500
-		color_reg <= 8'b_011_001_00 ; // white
-	end
-	else if (counter >= (max_iterations >>> 2)) begin //250
-		color_reg <= 8'b_011_001_00 ;
-	end
-	else if (counter >= (max_iterations >>> 3)) begin //125
-		color_reg <= 8'b_101_010_01 ;
-	end
-	else if (counter >= (max_iterations >>> 4)) begin //62
-		color_reg <= 8'b_011_001_01 ;
-	end
-	else if (counter >= (max_iterations >>> 5)) begin //31
-		color_reg <= 8'b_001_001_01 ;
-	end
-	else if (counter >= (max_iterations >>> 6)) begin //15
-		color_reg <= 8'b_011_010_10 ;
-	end
-	else if (counter >= (max_iterations >>> 7)) begin //7
-		color_reg <= 8'b_010_100_10 ;
-	end
-	else if (counter >= (max_iterations >>> 8)) begin //3
-		color_reg <= 8'b_010_100_10 ;
+	if(~KEY[0])begin
+		color_reg <= 8'b_000_000_00 ;
 	end
 	else begin
-		color_reg <= 8'b_010_100_10 ;
+		if (counter >= 999) begin
+			color_reg <= 8'b_000_000_00 ; // black
+		end
+		else if (counter >= (max_iterations >>> 1)) begin //500
+			color_reg <= 8'b_011_001_00 ; // white
+		end
+		else if (counter >= (max_iterations >>> 2)) begin //250
+			color_reg <= 8'b_011_001_00 ;
+		end
+		else if (counter >= (max_iterations >>> 3)) begin //125
+			color_reg <= 8'b_101_010_01 ;
+		end
+		else if (counter >= (max_iterations >>> 4)) begin //62
+			color_reg <= 8'b_011_001_01 ;
+		end
+		else if (counter >= (max_iterations >>> 5)) begin //31
+			color_reg <= 8'b_001_001_01 ;
+		end
+		else if (counter >= (max_iterations >>> 6)) begin //15
+			color_reg <= 8'b_011_010_10 ;
+		end
+		else if (counter >= (max_iterations >>> 7)) begin //7
+			color_reg <= 8'b_010_100_10 ;
+		end
+		else if (counter >= (max_iterations >>> 8)) begin //3
+			color_reg <= 8'b_010_100_10 ;
+		end
+		else begin
+			color_reg <= 8'b_010_100_10 ;
+		end
 	end
-
 end
 //----------------------------------------------------------------------------------------------//
 
@@ -1021,6 +1025,7 @@ module mandelbrot_iterator (
             Z_N_i <= 0;
             out_num <= 0;
 			done_signal <= 0;
+			 temp_result <= 0;
         end
         else begin
             case(state)
@@ -1028,7 +1033,7 @@ module mandelbrot_iterator (
                     num_iterations <= 1;
 					done_signal <= 0;
                     next_state <= CALC;
-					temp_result <= result;
+					temp_result <= 0;
 					Z_N_r_sq <= 0;
             		Z_N_i_sq <= 0;
             		Z_N_r <= 0;
@@ -1149,4 +1154,3 @@ module unsigned_mult (out, a, b);
 	assign mult_out = a * b;
 	assign out = mult_out[49:23];
 endmodule
-
