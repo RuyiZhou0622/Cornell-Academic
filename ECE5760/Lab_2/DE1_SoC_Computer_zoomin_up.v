@@ -476,35 +476,52 @@ wire [26:0] ci_start;
 wire [26:0] dx;
 wire [26:0] dy;
 
-wire [26:0] cr_start_temp;
-wire [26:0] ci_start_temp;
-wire [26:0] dx_temp;
-wire [26:0] dy_temp;
+reg [26:0] cr_start_temp;
+reg [26:0] ci_start_temp;
+reg [26:0] dx_temp;
+reg [26:0] dy_temp;
 
-// always@(*) begin
-// 	if (~SW[0]) begin
-// 		cr_start_temp = -27'sd16777216; //-2
-// 		ci_start_temp = 27'sd8388608; //1
-// 		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
-// 		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-// 	end
-// 	else begin
-// 		cr_start_temp = -27'sd16777216;//2
-// 		ci_start_temp =  27'sd8388608;//1
-// 		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-// 		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-// 	end
-// end
+always@(*) begin
+	if (~SW[0]) begin
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+	end
+	else if (SW[9]) begin // right panning
+		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+	end
+	else if (SW[8]) begin // down panning
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+	end
+	else if(SW[7]) begin // zoom in deeper
+		cr_start_temp = -27'sd16777216;//2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+	end else begin
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+	end
+end
 
-assign cr_start_temp = SW[0] ? -27'sd16777216 : -27'sd16777216;
-assign ci_start_temp = SW[0] ?  27'sd8388608   :  27'sd8388608;
-assign dx_temp 		 = SW[0] ?  27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;
-assign dy_temp       = SW[0] ?  27'b0000_000_0000_0100_0100_0100_0100 : 27'b0000_000_0000_1000_1000_1000_1000;
+// assign cr_start_temp = SW[0] ? -27'sd16777216 : -27'sd16777216;
+// assign ci_start_temp = SW[0] ?  27'sd8388608   :  27'sd8388608;
+// assign dx_temp 		 = SW[0] ?  27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;
+// assign dy_temp       = SW[0] ?  27'b0000_000_0000_0100_0100_0100_0100 : 27'b0000_000_0000_1000_1000_1000_1000;
 
-assign cr_start_temp = SW[9] ? cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000 : cr_start_temp;
-assign ci_start_temp = SW[8] ? ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000 : ci_start_temp;
-assign dx_temp 		 = SW[7] ?  27'b0000_000_0000_0010_0110_0110_0110 : 27'b0000_000_0000_1001_1001_1001_1001;
-assign dy_temp       = SW[7] ?  27'b0000_000_0000_0010_0010_0010_0010 : 27'b0000_000_0000_1000_1000_1000_1000;
+// assign cr_start_temp = SW[9] ? cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000 : cr_start_temp;
+// assign ci_start_temp = SW[8] ? ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000 : ci_start_temp;
+// assign dx_temp 		 = SW[7] ?  27'b0000_000_0000_0010_0110_0110_0110 : 27'b0000_000_0000_1001_1001_1001_1001;
+// assign dy_temp       = SW[7] ?  27'b0000_000_0000_0010_0010_0010_0010 : 27'b0000_000_0000_1000_1000_1000_1000;
 
 assign dx = dx_temp;
 assign dy = dy_temp;
