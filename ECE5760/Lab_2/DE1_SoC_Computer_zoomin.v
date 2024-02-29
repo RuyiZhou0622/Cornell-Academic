@@ -364,13 +364,13 @@ wire			[15: 0]	hex3_hex0;
 //assign HEX1 = ~hex3_hex0[14: 8];
 //assign HEX2 = ~hex3_hex0[22:16];
 //assign HEX3 = ~hex3_hex0[30:24];
-assign HEX4 = 7'b1111111;
-assign HEX5 = 7'b1111111;
+// assign HEX4 = 7'b1111111;
+// assign HEX5 = 7'b1111111;
 
-HexDigit Digit0(HEX0, hex3_hex0[3:0]);
-HexDigit Digit1(HEX1, hex3_hex0[7:4]);
-HexDigit Digit2(HEX2, hex3_hex0[11:8]);
-HexDigit Digit3(HEX3, hex3_hex0[15:12]);
+// HexDigit Digit0(HEX0, hex3_hex0[3:0]);
+// HexDigit Digit1(HEX1, hex3_hex0[7:4]);
+// HexDigit Digit2(HEX2, hex3_hex0[11:8]);
+// HexDigit Digit3(HEX3, hex3_hex0[15:12]);
 
 // VGA clock and reset lines
 wire vga_pll_lock ;
@@ -481,25 +481,30 @@ wire [26:0] ci_start_temp;
 wire [26:0] dx_temp;
 wire [26:0] dy_temp;
 
-always(*) begin
-	if (~KEY[0]) begin
-		cr_start_temp <= -27'sd16777216; //-2
-		ci_start_temp <= 27'sd8388608; //1
-		dx_temp <= 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
-		dy_temp <= 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-	end
-	if(~KEY[1]) begin
-		cr_start_temp <= -27'sd16777216;//2
-		ci_start_temp <=  27'sd8388608;//1
-		dx_temp <=  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		dy_temp <= 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-	end
-end
+// always@(*) begin
+// 	if (~SW[0]) begin
+// 		cr_start_temp = -27'sd16777216; //-2
+// 		ci_start_temp = 27'sd8388608; //1
+// 		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+// 		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+// 	end
+// 	else begin
+// 		cr_start_temp = -27'sd16777216;//2
+// 		ci_start_temp =  27'sd8388608;//1
+// 		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+// 		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+// 	end
+// end
+
+assign cr_start_temp = SW[0] ? -27'sd16777216 : -27'sd16777216;
+assign ci_start_temp = SW[0] ?  27'sd8388608   :  27'sd8388608;
+assign dx_temp 		 = SW[0] ?  27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;
+assign dy_temp       = SW[0] ?  27'b0000_000_0000_0100_0100_0100_0100 : 27'b0000_000_0000_1000_1000_1000_1000;
 
 assign dx = dx_temp;
 assign dy = dy_temp;
-assign cr_start = cr_inter_temp;
-assign ci_start = ci_inter_temp;
+assign cr_start = cr_start_temp;
+assign ci_start = ci_start_temp;
 
 fsm_and_iterator #(0) iter_1 (
 	.clk(M10k_pll),
@@ -529,8 +534,23 @@ fsm_and_iterator #(1) iter_2 (
 	.dy(dy)
 );
 
+
+
 //----------------------counter for the Timer---------------------------//
+wire [23:0] coverted_timer;
+
 assign timer_count = (out_timer_1 > out_timer_2) ? out_timer_1 : out_timer_2;
+assign coverted_timer = timer_count[25:2]; //ignore the fraction part to save the hardware resource.
+
+HexDigit Digit0(HEX0, coverted_timer[3:0]);
+HexDigit Digit1(HEX1, coverted_timer[7:4]);
+HexDigit Digit2(HEX2, coverted_timer[11:8]);
+HexDigit Digit3(HEX3, coverted_timer[15:12]);
+HexDigit Digit4(HEX4, coverted_timer[19:16]);
+HexDigit Digit5(HEX5, coverted_timer[23:20]);
+
+
+
 //----------------------------------------------------------------------//
 
 
@@ -1128,8 +1148,8 @@ assign ci_inter = ci_inter_temp;
 
 // wire signed [26:0] dx;
 // wire signed [26:0] dy;
-// assign dx[26:0] = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
-// assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+//  assign dx[26:0] = sw ? 27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
+//  assign dy[26:0] = sw ? 27'b0000_000_0000_0100_0100_0100_0100 :27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
 
 // assign the end coordiantes
 assign end_x[26:0] = 27'sd8388521;   // 1  27'b11110000001011010000111101
@@ -1148,8 +1168,8 @@ assign out_timer = out_timer_reg;
 		if(rst)begin
 			// cr_inter_temp <= sw ? 27'b0 : (-27'sd16777216 + (dx * NUM)); // -2
 			// ci_inter_temp <= sw ? 27'b0 : 27'sd8388608;  // 1
-			cr_inter_temp <= sw ? 27'b0 : (cr_start + (dx * NUM)); // -2
-			ci_inter_temp <= sw ? 27'b0 : ci_start; 
+			cr_inter_temp <= cr_start + (dx * NUM); // -2
+			ci_inter_temp <= ci_start; 
 			x_coord <= 10'd_0 ;
 			y_coord <= 10'd_0 ;
 			out_timer_reg <= 10'd0;
@@ -1262,3 +1282,6 @@ end
 
 
 endmodule
+
+
+
