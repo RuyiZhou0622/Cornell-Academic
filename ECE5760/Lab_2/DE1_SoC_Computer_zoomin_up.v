@@ -1,44 +1,4 @@
-if (SW[0]) begin 
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp = 27'sd8388608; //1
-		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
 
-		if (SW[9]) begin // right panning
-		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
-		ci_start_temp = 27'sd8388608; //1
-		end 
-		if (SW[8]) begin // down panning
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
-		end
-	end else begin
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp = 27'sd8388608; //1
-		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
-		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-	end
-
-	if (SW[7]) begin // zoom in deeper
-		cr_start_temp = -27'sd16777216;//2
-		ci_start_temp = 27'sd8388608; //1
-		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
-		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
-
-		if (SW[9]) begin // right panning
-		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
-		ci_start_temp = 27'sd8388608; //1
-		end 
-		if (SW[8]) begin // down panning
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
-		end
-	end else begin
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp = 27'sd8388608; //1
-		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
-		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-	end
 
 module DE1_SoC_Computer (
 	////////////////////////////////////
@@ -516,35 +476,46 @@ wire [26:0] ci_start;
 wire [26:0] dx;
 wire [26:0] dy;
 
-reg [26:0] cr_start_temp;
-reg [26:0] ci_start_temp;
-reg [26:0] dx_temp;
-reg [26:0] dy_temp;
+reg signed [26:0] cr_start_temp;
+reg signed [26:0] ci_start_temp;
+reg signed [26:0] dx_temp;
+reg signed [26:0] dy_temp;
 
 always@(*) begin
-	if (~SW[0]) begin
+	if (SW[0]) begin 
 		cr_start_temp = -27'sd16777216; //-2
 		ci_start_temp = 27'sd8388608; //1
-		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
-		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-	end
-	else if (SW[9]) begin // right panning
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+
+		if (SW[9]) begin // right panning
 		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
 		ci_start_temp = 27'sd8388608; //1
-		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-	end
-	else if (SW[8]) begin // down panning
+		end 
+		if (SW[8]) begin // down panning
 		cr_start_temp = -27'sd16777216; //-2
 		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
-		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-	end
-	else if(SW[7]) begin // zoom in deeper
+		end
+	// end else begin
+	// 	cr_start_temp = -27'sd16777216; //-2
+	// 	ci_start_temp = 27'sd8388608; //1
+	// 	dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+	// 	dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+	// end
+	end else if (SW[7]) begin // zoom in deeper
 		cr_start_temp = -27'sd16777216;//2
 		ci_start_temp = 27'sd8388608; //1
 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+
+		if (SW[9]) begin // right panning
+		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+		ci_start_temp = 27'sd8388608; //1
+		end 
+		if (SW[8]) begin // down panning
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
+		end
 	end else begin
 		cr_start_temp = -27'sd16777216; //-2
 		ci_start_temp = 27'sd8388608; //1
@@ -552,7 +523,6 @@ always@(*) begin
 		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
 	end
 end
-
 // assign cr_start_temp = SW[0] ? -27'sd16777216 : -27'sd16777216;
 // assign ci_start_temp = SW[0] ?  27'sd8388608   :  27'sd8388608;
 // assign dx_temp 		 = SW[0] ?  27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;
@@ -602,7 +572,7 @@ fsm_and_iterator #(1) iter_2 (
 wire [23:0] coverted_timer;
 
 assign timer_count = (out_timer_1 > out_timer_2) ? out_timer_1 : out_timer_2;
-assign coverted_timer = timer_count[25:2]; //ignore the fraction part to save the hardware resource.
+assign coverted_timer = timer_count / 100000; //ignore the fraction part to save the hardware resource.
 
 HexDigit Digit0(HEX0, coverted_timer[3:0]);
 HexDigit Digit1(HEX1, coverted_timer[7:4]);
@@ -1344,5 +1314,4 @@ end
 
 
 endmodule
-
 
