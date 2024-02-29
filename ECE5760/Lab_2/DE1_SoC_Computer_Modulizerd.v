@@ -378,7 +378,11 @@ wire vga_pll ;
 reg  vga_reset ;
 
 // M10k memory control and data
-wire 		[7:0] 	M10k_out ;
+wire 		[7:0] 	M10k_out_1 ;
+wire 		[7:0] 	M10k_out_2 ;
+wire        [7:0]   M10k_out;
+//reg 		[7:0] 	write_data ;
+//reg 		[18:0] 	write_address ;
 reg 		[18:0] 	read_address ;
 wire 					write_enable ;
 
@@ -388,6 +392,8 @@ wire 					M10k_pll_locked ;
 
 // Memory writing control registers
 reg 		[7:0] 	arbiter_state ;
+//reg 		[9:0] 	x_coord ;
+//reg 		[9:0] 	y_coord ;
 
 // Wires for connecting VGA driver to memory
 wire 		[9:0]		next_x ;
@@ -401,23 +407,34 @@ always@(posedge M10k_pll) begin
 	end
 	// Otherwiser repeatedly write a large checkerboard to memory
 	else begin
-		if (arbiter_state == 8'd_0 && done_ite_top == 1) begin
+		//if (arbiter_state == 8'd_0 && done_ite_top == 1) begin
+		if (arbiter_state == 8'd_0) begin
 			vga_reset <= 1'b_0 ;
 			arbiter_state <= 8'd_0 ;
 		end
 	end
 end
 
-// Instantiate memory
-M10K_1000_8 pixel_data( .q(M10k_out), // contains pixel color (8 bit) for display
-						.d(write_data_top),
-						.write_address(write_address_top),
-						.read_address((19'd_640*next_y) + next_x),
-						.we(done_ite_top),
+// Instantiate memories
+M10K_1000_8 pixel_data_1( .q(M10k_out_1), // contains pixel color (8 bit) for display
+						.d(write_data_top_1),
+						.write_address(write_address_top_1),
+						.read_address((19'd_320*next_y) + (next_x>>1)),
+						.we(done_ite_top_1),
 						.clk(M10k_pll)
 );
 
-// Instantiate VGA driver					
+M10K_1000_8 pixel_data_2( .q(M10k_out_2), // contains pixel color (8 bit) for display
+						.d(write_data_top_2),
+						.write_address(write_address_top_2),
+						.read_address((19'd_320*next_y) + (next_x>>1)),
+						.we(done_ite_top_2),
+						.clk(M10k_pll)
+);
+
+// Instantiate VGA driver		
+
+assign M10k_out = next_x[0] ? M10k_out_2 : M10k_out_1;
 vga_driver DUT   (	.clock(vga_pll), 
 					.reset(vga_reset),
 					.color_in(M10k_out),	// Pixel color (8-bit) from memory
@@ -433,17 +450,51 @@ vga_driver DUT   (	.clock(vga_pll),
 					.blank(VGA_BLANK_N)
 );
 
+// mandelbrot_iterator inter1(
+//     .clk(M10k_pll),
+//     .rst(~KEY[0]),
+//     .Cr(cr_inter),
+//     .Ci(ci_inter),
+//     .iteration(iteration_num),
+// 	.done(done_ite)
+// );
 
-wire [18:0] write_address_top;
-wire [7:0]  write_data_top;
-wire        done_ite_top;
-fsm_and_iterator iter_1 (
+
+wire [18:0] write_address_top_1;
+wire [18:0] write_address_top_2;
+wire [7:0]  write_data_top_1;
+wire [7:0]  write_data_top_2;
+wire        done_ite_top_1;
+wire        done_ite_top_2;
+wire [31:0]  out_timer_1;
+wire [31:0]  out_timer_2;
+wire [31:0]  timer_count;
+
+
+fsm_and_iterator #(0) iter_1 (
 	.clk(M10k_pll),
 	.rst(~KEY[0]),
-	.done_ite_top(done_ite_top),
-	.write_address_top(write_address_top),
-	.write_data_top(write_data_top)
+	.done_ite_top(done_ite_top_1),
+	.write_address_top(write_address_top_1),
+	.write_data_top(write_data_top_1),
+	.out_timer(out_timer_1),
+	.sw(SW[0])
 );
+
+fsm_and_iterator #(1) iter_2 (
+	.clk(M10k_pll),
+	.rst(~KEY[0]),
+	.done_ite_top(done_ite_top_2),
+	.write_address_top(write_address_top_2),
+	.write_data_top(write_data_top_2),
+	.out_timer(out_timer_2),
+	.sw(SW[0])
+);
+
+//----------------------counter for the Timer---------------------------//
+assign timer_count = (out_timer_1 > out_timer_2) ? out_timer_1 : out_timer_2;
+//----------------------------------------------------------------------//
+
 
 //=======================================================
 //  Structural coding
@@ -794,7 +845,7 @@ module M10K_1000_8(
 );
 	 // force M10K ram style
 	 // 307200 words of 8 bits
-    reg [7:0] mem [307200:0];//153600  /* synthesis ramstyle = "no_rw_check, M10K" */;
+    reg [7:0] mem [153600:0];//153600  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin
@@ -982,44 +1033,48 @@ module unsigned_mult (out, a, b);
 	assign out = mult_out[49:23];
 endmodule
 
-module fsm_and_iterator (
+module fsm_and_iterator #(parameter NUM = 0)  (
 	clk,
 	rst,
 	done_ite_top,
 	write_address_top,
-	write_data_top
+	write_data_top,
+	out_timer,
+	sw
 );
 
 input clk;
 input rst;
+input sw;
 //output unsigned [9:0] iteration_num_top;
 output done_ite_top;
 output [18:0] write_address_top;
 output [7:0] write_data_top;
+output [31:0] out_timer;
 
 //assign iteration_num_top = iteration_num;
 assign done_ite_top 	 = done_ite;
 assign write_data_top 	 = write_data;
 assign write_address_top = write_address;
 //wire inter_reset;
-reg 		[9:0] 	x_coord ;
-reg 		[9:0] 	y_coord ;
-reg 		[7:0] 	write_data ;
-reg 		[18:0] 	write_address ;
+reg 		[9:0]  x_coord ;
+reg 		[9:0]  y_coord ;
+reg 		[7:0]  write_data ;
+reg 		[18:0] write_address ;
+reg         [31:0]  out_timer_reg;
 wire signed [26:0] cr_inter;
 wire signed [26:0] ci_inter;
 wire signed [26:0] end_x;
 wire signed [26:0] end_y;
-parameter [1:0] STATE0 = 0;
-parameter [1:0] STATE1 = 1;
-parameter [1:0] STATE2 = 2;
-parameter [1:0] STATE3 = 3;
-reg signed [26:0] cr_inter_temp;
-reg signed [26:0] ci_inter_temp;
-wire done_ite;
-wire [9:0] iteration_num;
-
-reg [2:0] state_ite, next_state_ite;
+parameter   [1:0]  STATE0 = 0;
+parameter   [1:0]  STATE1 = 1;
+parameter   [1:0]  STATE2 = 2;
+parameter   [1:0]  STATE3 = 3;
+reg signed  [26:0] cr_inter_temp;
+reg signed  [26:0] ci_inter_temp;
+wire               done_ite;
+wire        [9:0]  iteration_num;
+reg         [2:0]  state_ite, next_state_ite;
 
 assign cr_inter = cr_inter_temp;
 assign ci_inter = ci_inter_temp;
@@ -1033,32 +1088,38 @@ assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
 assign end_x[26:0] = 27'sd8388521;   // 1  27'b11110000001011010000111101
 assign end_y[26:0] = -27'sd8388367;  //-1
 
+//assign the output of the timer
+assign out_timer = out_timer_reg;
+
 //-----------------fisrt Iterator--------------------------------------------------------------// 
 	always@(posedge clk) begin
 		state_ite <= next_state_ite;
 		if(rst)begin
-			cr_inter_temp <= -27'sd16777216; // -2
-			ci_inter_temp <=  27'sd8388608;  // 1
+			cr_inter_temp <= sw ? 27'b0 : (-27'sd16777216 + (dx * NUM)); // -2
+			ci_inter_temp <= sw ? 27'b0 : 27'sd8388608;  // 1
 			x_coord <= 10'd_0 ;
 			y_coord <= 10'd_0 ;
+			out_timer_reg <= 10'd0;
 			state_ite <= STATE0;
 		end
 		else begin
 			case(state_ite)
 				STATE0: begin
-					cr_inter_temp <= -27'sd16777216; // -2 7000000
+					out_timer_reg <= out_timer_reg + 1;
+					cr_inter_temp <= -27'sd16777216  + (dx * NUM); // -2 7000000
 					ci_inter_temp <=  27'sd8388608; // 1  8000000
 					next_state_ite <= done_ite ? STATE1 : STATE0;
 				end
 				STATE1: begin
+					out_timer_reg <= out_timer_reg + 1;
 					if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
-						cr_inter_temp <= cr_inter_temp + dx;
+						cr_inter_temp <= cr_inter_temp + dx + dx;
 						ci_inter_temp <= ci_inter_temp ;
-						x_coord <= (x_coord==10'd_639)?10'd_0:(x_coord + 10'd_1) ;
+						x_coord <= (x_coord==10'd_319)?10'd_0:(x_coord + 10'd_1) ;
 						write_data <= color_reg ;
 						next_state_ite <= STATE1;
 					end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
-						if(ci_inter_temp <= end_y) begin
+						if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
 					 		next_state_ite <= STATE2;
 						end else begin
 							cr_inter_temp <= -27'sd16777216;
@@ -1073,12 +1134,14 @@ assign end_y[26:0] = -27'sd8388367;  //-1
 						ci_inter_temp <= ci_inter_temp ;
 						x_coord <= x_coord;
 						y_coord <= y_coord;
+					//	write_enable <= 1'b_0 ;
 						write_data <= write_data ;
 						next_state_ite <= STATE1;
 					end
-					write_address <= (19'd_640 * y_coord) + x_coord ;
+					write_address <= (19'd_320 * y_coord) + x_coord ;
 				end
 				STATE2:begin 
+					out_timer_reg <= out_timer_reg;
 					next_state_ite <= STATE2;
 				end
 				
@@ -1103,6 +1166,7 @@ parameter [9:0] max_iterations = 10'd999;
 reg [7:0] color_reg;
 
 always@(*)begin
+
 		if (counter >= 999) begin
 			color_reg <= 8'b_000_000_00 ; // black
 		end
@@ -1133,6 +1197,7 @@ always@(*)begin
 		else begin
 			color_reg <= 8'b_010_100_10 ;
 		end
+	
 end
 //----------------------------------------------------------------------------------------------//
 
