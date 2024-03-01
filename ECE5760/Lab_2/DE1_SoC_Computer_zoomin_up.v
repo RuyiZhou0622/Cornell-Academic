@@ -458,7 +458,7 @@ vga_driver DUT   (	.clock(vga_pll),
 //     .iteration(iteration_num),
 // 	.done(done_ite)
 // );
-
+assign LEDR = SW;
 
 wire [18:0] write_address_top_1;
 wire [18:0] write_address_top_2;
@@ -487,36 +487,35 @@ always@(*) begin
 		ci_start_temp = 27'sd8388608; //1
 		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
 		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-
-		if (SW[9]) begin // right panning
-		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+	end
+	else if (SW[9]) begin // right panning
+		cr_start_temp = -27'sd16777216 + 27'b0000_010_0000_0000_0000_0000_0000; //-2
 		ci_start_temp = 27'sd8388608; //1
-		end 
-		if (SW[8]) begin // down panning
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+	end 
+	else if (SW[8]) begin // down panning
 		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
-		end
-	// end else begin
-	// 	cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp =  27'sd8388608 - 27'b0000_010_0000_0000_0000_0000_0000;//1
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+	end
+	
+	// end else if (SW[7]) begin // zoom in deeper
+	// 	cr_start_temp = -27'sd16777216;//2
 	// 	ci_start_temp = 27'sd8388608; //1
-	// 	dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
-	// 	dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-	// end
-	end else if (SW[7]) begin // zoom in deeper
-		cr_start_temp = -27'sd16777216;//2
-		ci_start_temp = 27'sd8388608; //1
-		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
-		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+	// 	dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+	// 	dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
 
-		if (SW[9]) begin // right panning
-		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
-		ci_start_temp = 27'sd8388608; //1
-		end 
-		if (SW[8]) begin // down panning
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
-		end
-	end else begin
+		// if (SW[9]) begin // right panning
+		// cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+		// ci_start_temp = 27'sd8388608; //1
+		// end 
+		// if (SW[8]) begin // down panning
+		// cr_start_temp = -27'sd16777216; //-2
+		// ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
+		// end
+	else begin
 		cr_start_temp = -27'sd16777216; //-2
 		ci_start_temp = 27'sd8388608; //1
 		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
@@ -1205,6 +1204,8 @@ assign out_timer = out_timer_reg;
 			x_coord <= 10'd_0 ;
 			y_coord <= 10'd_0 ;
 			out_timer_reg <= 10'd0;
+			write_data <= 0;
+			write_address <= 0;
 			state_ite <= STATE0;
 		end
 		else begin
@@ -1314,4 +1315,3 @@ end
 
 
 endmodule
-
