@@ -1,4 +1,4 @@
-//Week 2 checked off. With a little bug about the reset
+//more stable on week2 
 
 module DE1_SoC_Computer (
 	////////////////////////////////////
@@ -1220,16 +1220,16 @@ assign out_timer = out_timer_reg;
 				end
 				STATE1: begin
 					out_timer_reg <= out_timer_reg + 1;
-					//if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
-					if((x_coord < 10'd_319) && done_ite == 1'b1) begin
+					if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
+				//	if((x_coord < 10'd_319) && done_ite == 1'b1) begin
 						cr_inter_temp <= cr_inter_temp + dx + dx;
 						ci_inter_temp <= ci_inter_temp ;
 						x_coord <= (x_coord==10'd_319)?10'd_0:(x_coord + 10'd_1) ;
 						write_data <= color_reg ;
 						next_state_ite <= STATE1;
-					// end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
-					// 	if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
-					end else if((x_coord >= 10'd_319) && done_ite == 1 ) begin
+					 end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
+					 	if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
+				//	end else if((x_coord >= 10'd_319) && done_ite == 1 ) begin
 						if(y_coord >= 10'd_479) begin
 					 		next_state_ite <= STATE2;
 						end else begin
