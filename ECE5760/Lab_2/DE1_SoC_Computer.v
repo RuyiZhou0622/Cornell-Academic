@@ -1,4 +1,4 @@
-
+//Week 2 checked off. With a little bug about the reset
 
 module DE1_SoC_Computer (
 	////////////////////////////////////
