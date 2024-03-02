@@ -1,4 +1,5 @@
-//more stable on week2 
+//added fix-point multiplier
+
 
 module DE1_SoC_Computer (
 	////////////////////////////////////
@@ -399,6 +400,8 @@ reg 		[7:0] 	arbiter_state ;
 wire 		[9:0]		next_x ;
 wire 		[9:0] 	next_y ;
 
+assign LEDR[9:0] = SW[9:0];
+
 always@(posedge M10k_pll) begin
 	// Zero everything in reset
 	if (~KEY[0]) begin
@@ -458,7 +461,7 @@ vga_driver DUT   (	.clock(vga_pll),
 //     .iteration(iteration_num),
 // 	.done(done_ite)
 // );
-assign LEDR = SW;
+
 
 wire [18:0] write_address_top_1;
 wire [18:0] write_address_top_2;
@@ -471,15 +474,15 @@ wire [31:0]  out_timer_2;
 wire [31:0]  timer_count;
 
 //zoom in/ zoom out
-wire [26:0] cr_start;
-wire [26:0] ci_start;
-wire [26:0] dx;
-wire [26:0] dy;
+wire signed[26:0] cr_start;
+wire signed[26:0] ci_start;
+wire       [26:0] dx;
+wire       [26:0] dy;
 
 reg signed [26:0] cr_start_temp;
 reg signed [26:0] ci_start_temp;
-reg signed [26:0] dx_temp;
-reg signed [26:0] dy_temp;
+reg        [26:0] dx_temp;
+reg 	   [26:0] dy_temp;
 
 always@(*) begin
 	if (SW[0]) begin 
@@ -487,19 +490,29 @@ always@(*) begin
 		ci_start_temp = 27'sd8388608; //1
 		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
 		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-	end
-	else if (SW[9]) begin // right panning
-		cr_start_temp = -27'sd16777216 + 27'b0000_010_0000_0000_0000_0000_0000; //-2
-		ci_start_temp = 27'sd8388608; //1
-		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-	end 
-	else if (SW[8]) begin // down panning
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp =  27'sd8388608 - 27'b0000_010_0000_0000_0000_0000_0000;//1
-		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-	end
+
+		// if (SW[9]) begin // right panning
+		// 	cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+		// 	ci_start_temp = 27'sd8388608; //1
+		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+		// end else begin
+		// 	cr_start_temp = -27'sd16777216; //-2
+		// 	ci_start_temp = 27'sd8388608; //1
+		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+
+		// end
+		// if (SW[8]) begin // down panning
+		// 	cr_start_temp = -27'sd16777216; //-2
+		// 	ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
+		// end else begin
+		// 	cr_start_temp = -27'sd16777216; //-2
+		// 	ci_start_temp = 27'sd8388608; //1
+		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+
+		// end
 	
 	// end else if (SW[7]) begin // zoom in deeper
 	// 	cr_start_temp = -27'sd16777216;//2
@@ -507,15 +520,29 @@ always@(*) begin
 	// 	dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
 	// 	dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
 
-		// if (SW[9]) begin // right panning
-		// cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
-		// ci_start_temp = 27'sd8388608; //1
-		// end 
-		// if (SW[8]) begin // down panning
-		// cr_start_temp = -27'sd16777216; //-2
-		// ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
-		// end
-	else begin
+	// 	if (SW[9]) begin // right panning
+	// 		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+	// 		ci_start_temp = 27'sd8388608; //1
+	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+	// 	end else begin
+	// 		cr_start_temp = -27'sd16777216;//2
+	// 		ci_start_temp = 27'sd8388608; //1
+	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+	// 	end
+	// 	if (SW[8]) begin // down panning
+	// 		cr_start_temp = -27'sd16777216; //-2
+	// 		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
+	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+	// 	end else begin
+	// 		cr_start_temp = -27'sd16777216;//2
+	// 		ci_start_temp = 27'sd8388608; //1
+	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+	// 	end
+	end else begin
 		cr_start_temp = -27'sd16777216; //-2
 		ci_start_temp = 27'sd8388608; //1
 		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
@@ -537,7 +564,7 @@ assign dy = dy_temp;
 assign cr_start = cr_start_temp;
 assign ci_start = ci_start_temp;
 
-fsm_and_iterator #(0) iter_1 (
+fsm_and_iterator #(.NUM(27'b0)) iter_1 (
 	.clk(M10k_pll),
 	.rst(~KEY[0]),
 	.done_ite_top(done_ite_top_1),
@@ -548,10 +575,12 @@ fsm_and_iterator #(0) iter_1 (
 	.cr_start(cr_start),
 	.ci_start(ci_start),
 	.dx(dx),
-	.dy(dy)
+	.dy(dy),
+	.key_left(~KEY[3]),
+	.key_right(~KEY[2])
 );
 
-fsm_and_iterator #(1) iter_2 (
+fsm_and_iterator #(.NUM(27'b0001_000_0000_0000_0000_0000_0000)) iter_2 (
 	.clk(M10k_pll),
 	.rst(~KEY[0]),
 	.done_ite_top(done_ite_top_2),
@@ -562,7 +591,9 @@ fsm_and_iterator #(1) iter_2 (
 	.cr_start(cr_start),
 	.ci_start(ci_start),
 	.dx(dx),
-	.dy(dy)
+	.dy(dy),
+	.key_left(~KEY[3]),
+	.key_right(~KEY[2])
 );
 
 
@@ -1133,12 +1164,16 @@ module fsm_and_iterator #(parameter NUM = 0)  (
 	cr_start,
 	ci_start,
 	dx,
-	dy
+	dy,
+	key_left,
+	key_right
 );
 
 input clk;
 input rst;
 input sw;
+input key_left;
+input key_right;																						
 //output unsigned [9:0] iteration_num_top;
 output done_ite_top;
 output [18:0] write_address_top;
@@ -1164,10 +1199,13 @@ wire signed [26:0] cr_inter;
 wire signed [26:0] ci_inter;
 wire signed [26:0] end_x;
 wire signed [26:0] end_y;
-parameter   [1:0]  STATE0 = 0;
-parameter   [1:0]  STATE1 = 1;
-parameter   [1:0]  STATE2 = 2;
-parameter   [1:0]  STATE3 = 3;
+parameter   [2:0]  STATE0 = 0;
+parameter   [2:0]  STATE1 = 1;
+parameter   [2:0]  STATE2 = 2;
+parameter   [2:0]  STATE3 = 3;
+parameter   [2:0]  RIGHT  = 4;
+parameter   [2:0]  LEFT   = 5;
+parameter   [2:0]  RESET  = 6;
 reg signed  [26:0] cr_inter_temp;
 reg signed  [26:0] ci_inter_temp;
 wire               done_ite;
@@ -1193,13 +1231,21 @@ assign out_timer = out_timer_reg;
 // wire signed [26:0] cr_start;
 // wire signed [26:0] ci_start;
 
+//store for the steps
+wire [26:0] step;
+
+unsigned_mult get_step (.out(step),
+						.a(dx),
+						.b(NUM)
+						);
+
 //-----------------fisrt Iterator--------------------------------------------------------------// 
 	always@(posedge clk) begin
 		state_ite <= next_state_ite;
 		if(rst)begin
 			// cr_inter_temp <= sw ? 27'b0 : (-27'sd16777216 + (dx * NUM)); // -2
 			// ci_inter_temp <= sw ? 27'b0 : 27'sd8388608;  // 1
-			cr_inter_temp <= cr_start + (dx * NUM); // -2
+			cr_inter_temp <= cr_start + step; // -2
 			ci_inter_temp <= ci_start; 
 			x_coord <= 10'd_0 ;
 			y_coord <= 10'd_0 ;
@@ -1214,23 +1260,39 @@ assign out_timer = out_timer_reg;
 					out_timer_reg <= out_timer_reg + 1;
 					//cr_inter_temp <= -27'sd16777216  + (dx * NUM); // -2 7000000
 					//ci_inter_temp <=  27'sd8388608; // 1  8000000
-					cr_inter_temp <= cr_start + (dx * NUM); // -2
+					cr_inter_temp <= cr_start + step; // -2
 					ci_inter_temp <= ci_start;
 					next_state_ite <= done_ite ? STATE1 : STATE0;
 				end
+				
+				RIGHT: begin
+					out_timer_reg <= out_timer_reg + 1;
+					cr_inter_temp <=-27'sd16777216 + 100*dx;
+					ci_inter_temp <= 27'sd8388608;
+					next_state_ite <= done_ite ? STATE1 : RIGHT;
+
+				end
+
+				LEFT: begin
+					out_timer_reg <= out_timer_reg + 1;
+					cr_inter_temp <=-27'sd16777216 - 100*dx;
+					ci_inter_temp <= 27'sd8388608;
+					next_state_ite <= done_ite ? STATE1 : LEFT;
+				end
+
 				STATE1: begin
 					out_timer_reg <= out_timer_reg + 1;
 					if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
-				//	if((x_coord < 10'd_319) && done_ite == 1'b1) begin
+					//if((x_coord < 10'd_319) && done_ite == 1'b1) begin
 						cr_inter_temp <= cr_inter_temp + dx + dx;
 						ci_inter_temp <= ci_inter_temp ;
 						x_coord <= (x_coord==10'd_319)?10'd_0:(x_coord + 10'd_1) ;
 						write_data <= color_reg ;
 						next_state_ite <= STATE1;
 					 end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
-					 	if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
-				//	end else if((x_coord >= 10'd_319) && done_ite == 1 ) begin
-						if(y_coord >= 10'd_479) begin
+						if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
+					//end else if((x_coord >= 10'd_319) && done_ite == 1 ) begin
+					//	if(y_coord >= 10'd_479) begin
 					 		next_state_ite <= STATE2;
 						end else begin
 							//cr_inter_temp <= -27'sd16777216;
@@ -1253,8 +1315,24 @@ assign out_timer = out_timer_reg;
 					write_address <= (19'd_320 * y_coord) + x_coord ;
 				end
 				STATE2:begin 
-					out_timer_reg <= out_timer_reg;
-					next_state_ite <= STATE2;
+					if(key_right)begin
+						out_timer_reg <= 10'd0;
+						x_coord <= 10'd_0 ;
+						y_coord <= 10'd_0 ;
+						write_data <= 0;
+						write_address <= 0;
+						next_state_ite <= RIGHT;
+					end else if(key_left)begin
+						out_timer_reg <= 10'd0;
+						x_coord <= 10'd_0 ;
+						y_coord <= 10'd_0 ;
+						write_data <= 0;
+						write_address <= 0;
+						next_state_ite <= LEFT;
+					end else begin
+						out_timer_reg <= out_timer_reg;
+						next_state_ite <= STATE2;
+					end
 				end
 				
 				
