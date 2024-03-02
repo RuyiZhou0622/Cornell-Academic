@@ -364,13 +364,13 @@ wire			[15: 0]	hex3_hex0;
 //assign HEX1 = ~hex3_hex0[14: 8];
 //assign HEX2 = ~hex3_hex0[22:16];
 //assign HEX3 = ~hex3_hex0[30:24];
-assign HEX4 = 7'b1111111;
-assign HEX5 = 7'b1111111;
+// assign HEX4 = 7'b1111111;
+// assign HEX5 = 7'b1111111;
 
-HexDigit Digit0(HEX0, hex3_hex0[3:0]);
-HexDigit Digit1(HEX1, hex3_hex0[7:4]);
-HexDigit Digit2(HEX2, hex3_hex0[11:8]);
-HexDigit Digit3(HEX3, hex3_hex0[15:12]);
+// HexDigit Digit0(HEX0, hex3_hex0[3:0]);
+// HexDigit Digit1(HEX1, hex3_hex0[7:4]);
+// HexDigit Digit2(HEX2, hex3_hex0[11:8]);
+// HexDigit Digit3(HEX3, hex3_hex0[15:12]);
 
 // VGA clock and reset lines
 wire vga_pll_lock ;
@@ -378,9 +378,11 @@ wire vga_pll ;
 reg  vga_reset ;
 
 // M10k memory control and data
-wire 		[7:0] 	M10k_out ;
-reg 		[7:0] 	write_data ;
-reg 		[18:0] 	write_address ;
+wire 		[7:0] 	M10k_out_1 ;
+wire 		[7:0] 	M10k_out_2 ;
+wire        [7:0]   M10k_out;
+//reg 		[7:0] 	write_data ;
+//reg 		[18:0] 	write_address ;
 reg 		[18:0] 	read_address ;
 wire 					write_enable ;
 
@@ -390,8 +392,8 @@ wire 					M10k_pll_locked ;
 
 // Memory writing control registers
 reg 		[7:0] 	arbiter_state ;
-reg 		[9:0] 	x_coord ;
-reg 		[9:0] 	y_coord ;
+//reg 		[9:0] 	x_coord ;
+//reg 		[9:0] 	y_coord ;
 
 // Wires for connecting VGA driver to memory
 wire 		[9:0]		next_x ;
@@ -402,56 +404,37 @@ always@(posedge M10k_pll) begin
 	if (~KEY[0]) begin
 		arbiter_state <= 8'd_0 ;
 		vga_reset <= 1'b_1 ;
-	//	x_coord <= 10'd_0 ;
-	// y_coord <= 10'd_0 ;
 	end
 	// Otherwiser repeatedly write a large checkerboard to memory
 	else begin
-		if (arbiter_state == 8'd_0 && done_ite == 1) begin
+		//if (arbiter_state == 8'd_0 && done_ite_top == 1) begin
+		if (arbiter_state == 8'd_0) begin
 			vga_reset <= 1'b_0 ;
-			//write_enable <= 1'b_1 ;
-		//	write_address <= (19'd_640 * y_coord) + x_coord ;
-		//	write_data <= color_reg ;
-		/*	if (x_coord < 10'd_320) begin
-				if (y_coord < 10'd_240) begin
-					write_data <= color_reg ;
-				end
-				else begin
-					write_data <= color_reg ;
-				end
-			end
-			else begin
-				if (y_coord < 10'd_240) begin
-					write_data <= color_reg ;
-				end
-				else begin
-					write_data <= color_reg ;
-				end
-			end
-			*/
-			//x_coord <= (x_coord==10'd_639)?10'd_0:(x_coord + 10'd_1) ;
-		//	y_coord <= (x_coord==10'd_639)?((y_coord==10'd_479)?10'd_0:(y_coord+10'd_1)):y_coord ;
 			arbiter_state <= 8'd_0 ;
-		end
-		else begin
-			//write_data <= write_data ;
-		//	write_enable <= 1'b_0 ;
-			//x_coord <= x_coord;
-			//y_coord <= y_coord;
 		end
 	end
 end
 
-// Instantiate memory
-M10K_1000_8 pixel_data( .q(M10k_out), // contains pixel color (8 bit) for display
-						.d(write_data),
-						.write_address(write_address),
-						.read_address((19'd_640*next_y) + next_x),
-						.we(done_ite),
+// Instantiate memories
+M10K_1000_8 pixel_data_1( .q(M10k_out_1), // contains pixel color (8 bit) for display
+						.d(write_data_top_1),
+						.write_address(write_address_top_1),
+						.read_address((19'd_320*next_y) + (next_x>>1)),
+						.we(done_ite_top_1),
 						.clk(M10k_pll)
 );
 
-// Instantiate VGA driver					
+M10K_1000_8 pixel_data_2( .q(M10k_out_2), // contains pixel color (8 bit) for display
+						.d(write_data_top_2),
+						.write_address(write_address_top_2),
+						.read_address((19'd_320*next_y) + (next_x>>1)),
+						.we(done_ite_top_2),
+						.clk(M10k_pll)
+);
+
+// Instantiate VGA driver		
+
+assign M10k_out = next_x[0] ? M10k_out_2 : M10k_out_1;
 vga_driver DUT   (	.clock(vga_pll), 
 					.reset(vga_reset),
 					.color_in(M10k_out),	// Pixel color (8-bit) from memory
@@ -467,157 +450,140 @@ vga_driver DUT   (	.clock(vga_pll),
 					.blank(VGA_BLANK_N)
 );
 
-mandelbrot_iterator inter1(
-    .clk(M10k_pll),
-    .rst(~KEY[0]),
-    .Cr(cr_inter),
-    .Ci(ci_inter),
-    .iteration(iteration_num),
-	.done(done_ite)
+// mandelbrot_iterator inter1(
+//     .clk(M10k_pll),
+//     .rst(~KEY[0]),
+//     .Cr(cr_inter),
+//     .Ci(ci_inter),
+//     .iteration(iteration_num),
+// 	.done(done_ite)
+// );
+assign LEDR = SW;
+
+wire [18:0] write_address_top_1;
+wire [18:0] write_address_top_2;
+wire [7:0]  write_data_top_1;
+wire [7:0]  write_data_top_2;
+wire        done_ite_top_1;
+wire        done_ite_top_2;
+wire [31:0]  out_timer_1;
+wire [31:0]  out_timer_2;
+wire [31:0]  timer_count;
+
+//zoom in/ zoom out
+wire [26:0] cr_start;
+wire [26:0] ci_start;
+wire [26:0] dx;
+wire [26:0] dy;
+
+reg signed [26:0] cr_start_temp;
+reg signed [26:0] ci_start_temp;
+reg signed [26:0] dx_temp;
+reg signed [26:0] dy_temp;
+
+always@(*) begin
+	if (SW[0]) begin 
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+	end
+	else if (SW[9]) begin // right panning
+		cr_start_temp = -27'sd16777216 + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+	end 
+	else if (SW[8]) begin // down panning
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp =  27'sd8388608 - 27'b0000_010_0000_0000_0000_0000_0000;//1
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+	end
+	
+	// end else if (SW[7]) begin // zoom in deeper
+	// 	cr_start_temp = -27'sd16777216;//2
+	// 	ci_start_temp = 27'sd8388608; //1
+	// 	dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+	// 	dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+
+		// if (SW[9]) begin // right panning
+		// cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+		// ci_start_temp = 27'sd8388608; //1
+		// end 
+		// if (SW[8]) begin // down panning
+		// cr_start_temp = -27'sd16777216; //-2
+		// ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
+		// end
+	else begin
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+	end
+end
+// assign cr_start_temp = SW[0] ? -27'sd16777216 : -27'sd16777216;
+// assign ci_start_temp = SW[0] ?  27'sd8388608   :  27'sd8388608;
+// assign dx_temp 		 = SW[0] ?  27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;
+// assign dy_temp       = SW[0] ?  27'b0000_000_0000_0100_0100_0100_0100 : 27'b0000_000_0000_1000_1000_1000_1000;
+
+// assign cr_start_temp = SW[9] ? cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000 : cr_start_temp;
+// assign ci_start_temp = SW[8] ? ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000 : ci_start_temp;
+// assign dx_temp 		 = SW[7] ?  27'b0000_000_0000_0010_0110_0110_0110 : 27'b0000_000_0000_1001_1001_1001_1001;
+// assign dy_temp       = SW[7] ?  27'b0000_000_0000_0010_0010_0010_0010 : 27'b0000_000_0000_1000_1000_1000_1000;
+
+assign dx = dx_temp;
+assign dy = dy_temp;
+assign cr_start = cr_start_temp;
+assign ci_start = ci_start_temp;
+
+fsm_and_iterator #(0) iter_1 (
+	.clk(M10k_pll),
+	.rst(~KEY[0]),
+	.done_ite_top(done_ite_top_1),
+	.write_address_top(write_address_top_1),
+	.write_data_top(write_data_top_1),
+	.out_timer(out_timer_1),
+	.sw(SW[0]),
+	.cr_start(cr_start),
+	.ci_start(ci_start),
+	.dx(dx),
+	.dy(dy)
+);
+
+fsm_and_iterator #(1) iter_2 (
+	.clk(M10k_pll),
+	.rst(~KEY[0]),
+	.done_ite_top(done_ite_top_2),
+	.write_address_top(write_address_top_2),
+	.write_data_top(write_data_top_2),
+	.out_timer(out_timer_2),
+	.sw(SW[0]),
+	.cr_start(cr_start),
+	.ci_start(ci_start),
+	.dx(dx),
+	.dy(dy)
 );
 
 
-//wire inter_reset;
-wire signed [26:0] cr_inter;
-wire signed [26:0] ci_inter;
 
-wire signed [26:0] end_x;
-wire signed [26:0] end_y;
-parameter [1:0] STATE0 = 0;
-parameter [1:0] STATE1 = 1;
-parameter [1:0] STATE2 = 2;
-parameter [1:0] STATE3 = 3;
-parameter signed [26:0] one =  27'b0001_000_0000_0000_0000_0000_0000;     //0800000
-parameter signed [26:0] nega_one = 27'b1111_000_0000_0000_0000_0000_0000; //7800000
-parameter signed [26:0] nega_two = 27'b1110_000_0000_0000_0000_0000_0000; //7000000
-reg signed [26:0] cr_inter_temp;
-reg signed [26:0] ci_inter_temp;
-wire done_ite;
-wire [9:0] iteration_num;
+//----------------------counter for the Timer---------------------------//
+wire [23:0] coverted_timer;
 
-reg [2:0] state_ite, next_state_ite;
+assign timer_count = (out_timer_1 > out_timer_2) ? out_timer_1 : out_timer_2;
+assign coverted_timer = timer_count / 100000; //ignore the fraction part to save the hardware resource.
 
-assign cr_inter = cr_inter_temp;
-assign ci_inter = ci_inter_temp;
-
-wire signed [26:0] dx;
-wire signed [26:0] dy;
-assign dx[26:0] = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
-assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-//assign dx[26:0] = 27'sd39383;
-//assign dy[26:0] = 27'sd35025;
-
-// assign the end coordiantes
-assign end_x[26:0] = 27'sd8388521;   // 1  27'b11110000001011010000111101
-assign end_y[26:0] = -27'sd8388367;  //-1
-
-//assign write_enable = done_ite ? 1:0;
-
-	always@(posedge M10k_pll) begin
-		state_ite <= next_state_ite;
-		if(~KEY[0])begin
-			cr_inter_temp <= -27'sd16777216; // -2
-			ci_inter_temp <=  27'sd8388608;  // 1
-			x_coord <= 10'd_0 ;
-			y_coord <= 10'd_0 ;
-			state_ite <= STATE0;
-		end
-		else begin
-			case(state_ite)
-				STATE0: begin
-					cr_inter_temp <= -27'sd16777216; // -2 7000000
-					ci_inter_temp <=  27'sd8388608; // 1  8000000
-					next_state_ite <= done_ite ? STATE1 : STATE0;
-				end
-				STATE1: begin
-					if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
-						cr_inter_temp <= cr_inter_temp + dx;
-						ci_inter_temp <= ci_inter_temp ;
-						x_coord <= (x_coord==10'd_639)?10'd_0:(x_coord + 10'd_1) ;
-					//	write_enable <= 1'b_1 ;
-						write_data <= color_reg ;
-						next_state_ite <= STATE1;
-					end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
-						if(ci_inter_temp <= end_y) begin
-					//		write_enable <= 1'b_0 ;
-					 		next_state_ite <= STATE2;
-						end else begin
-							cr_inter_temp <= -27'sd16777216;
-							x_coord <= 10'd0;
-							ci_inter_temp <= ci_inter_temp - dy;
-						//	y_coord <= (x_coord==10'd_639)?((y_coord==10'd_479)?10'd_0:(y_coord+10'd_1)):y_coord ;
-							y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
-					//		write_enable <= 1'b_1 ;
-							write_data <= color_reg ;
-							next_state_ite <= STATE1;
-						end
-					end else begin
-						cr_inter_temp <= cr_inter_temp ;
-						ci_inter_temp <= ci_inter_temp ;
-						x_coord <= x_coord;
-						y_coord <= y_coord;
-					//	write_enable <= 1'b_0 ;
-						write_data <= write_data ;
-						next_state_ite <= STATE1;
-					end
-					write_address <= (19'd_640 * y_coord) + x_coord ;
-				end
-				STATE2:begin 
-					next_state_ite <= STATE2;
-				end
-				
-				
-				default: begin next_state_ite <= STATE0; end
-			endcase
-		end
-	end
+HexDigit Digit0(HEX0, coverted_timer[3:0]);
+HexDigit Digit1(HEX1, coverted_timer[7:4]);
+HexDigit Digit2(HEX2, coverted_timer[11:8]);
+HexDigit Digit3(HEX3, coverted_timer[15:12]);
+HexDigit Digit4(HEX4, coverted_timer[19:16]);
+HexDigit Digit5(HEX5, coverted_timer[23:20]);
 
 
 
-//--------------------LOOK-UP Table to convert iteration # to colors----------------------------//
-wire [9:0] counter;
-assign counter = iteration_num;
-parameter [9:0] max_iterations = 10'd999;
-reg [7:0] color_reg;
+//----------------------------------------------------------------------//
 
-always@(*)begin
-	if(~KEY[0])begin
-		color_reg <= 8'b_000_000_00 ;
-	end
-	else begin
-		if (counter >= 999) begin
-			color_reg <= 8'b_000_000_00 ; // black
-		end
-		else if (counter >= (max_iterations >>> 1)) begin //500
-			color_reg <= 8'b_011_001_00 ; // white
-		end
-		else if (counter >= (max_iterations >>> 2)) begin //250
-			color_reg <= 8'b_011_001_00 ;
-		end
-		else if (counter >= (max_iterations >>> 3)) begin //125
-			color_reg <= 8'b_101_010_01 ;
-		end
-		else if (counter >= (max_iterations >>> 4)) begin //62
-			color_reg <= 8'b_011_001_01 ;
-		end
-		else if (counter >= (max_iterations >>> 5)) begin //31
-			color_reg <= 8'b_001_001_01 ;
-		end
-		else if (counter >= (max_iterations >>> 6)) begin //15
-			color_reg <= 8'b_011_010_10 ;
-		end
-		else if (counter >= (max_iterations >>> 7)) begin //7
-			color_reg <= 8'b_010_100_10 ;
-		end
-		else if (counter >= (max_iterations >>> 8)) begin //3
-			color_reg <= 8'b_010_100_10 ;
-		end
-		else begin
-			color_reg <= 8'b_010_100_10 ;
-		end
-	end
-end
-//----------------------------------------------------------------------------------------------//
 
 //=======================================================
 //  Structural coding
@@ -742,8 +708,6 @@ Computer_System The_System (
 	.hps_io_hps_io_usb1_inst_DIR		(HPS_USB_DIR),
 	.hps_io_hps_io_usb1_inst_NXT		(HPS_USB_NXT)
 );
-
-
 
 
 endmodule // end top level
@@ -944,15 +908,33 @@ endmodule
 // http://people.ece.cornell.edu/land/courses/ece5760/DE1_SOC/HDL_style_qts_qii51007.pdf
 //============================================================
 
+// module M10K_1000_8( 
+//     output reg [7:0] q,
+//     input [7:0] d,
+//     input [18:0] write_address, read_address,
+//     input we, clk
+// );
+// 	 // force M10K ram style
+// 	 // 307200 words of 8 bits
+//     reg [7:0] mem [307200:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+	 
+//     always @ (posedge clk) begin
+//         if (we) begin
+//             mem[write_address] <= d;
+// 		  end
+//         q <= mem[read_address]; // q doesn't get d in this clock cycle
+//     end
+// endmodule
+
 module M10K_1000_8( 
     output reg [7:0] q,
     input [7:0] d,
-    input [18:0] write_address, read_address,
+    input [18:0] write_address, read_address,//half
     input we, clk
 );
 	 // force M10K ram style
 	 // 307200 words of 8 bits
-    reg [7:0] mem [307200:0]  /* synthesis ramstyle = "no_rw_check, M10K" */;
+    reg [7:0] mem [153600:0];//153600  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin
@@ -961,6 +943,7 @@ module M10K_1000_8(
         q <= mem[read_address]; // q doesn't get d in this clock cycle
     end
 endmodule
+
 
 module mandelbrot_iterator (
     clk,
@@ -1025,7 +1008,7 @@ module mandelbrot_iterator (
             Z_N_i <= 0;
             out_num <= 0;
 			done_signal <= 0;
-			 temp_result <= 0;
+			temp_result <= 0;
         end
         else begin
             case(state)
@@ -1065,23 +1048,7 @@ module mandelbrot_iterator (
 						done_signal <= 0;
 						next_state <= DONE;
 					end
-                    /*
-                     if(result >  26'h2000000)begin
-                        num_iterations <= num_iterations;
-                    end else begin
-                        num_iterations <= num_iterations + 1;
-                    end
-                    Z_N_r_sq <= Z_N_r_sq_temp;
-                    Z_N_i_sq <= Z_N_i_sq_temp;
-                    Z_N_r <= Z_NR_temp;
-                    Z_N_i <= Z_NRI_temp;
-                    if (result > 26'h2000000 || num_iterations >= 10'd999) begin
                 
-                        next_state <= DONE;
-                    end else begin
-                        next_state <= CALC;
-                    end
-                    */
                 end
                 DONE: begin
                     out_num <= num_iterations-1;
@@ -1153,4 +1120,198 @@ module unsigned_mult (out, a, b);
 	wire 	signed	[53:0]	mult_out;
 	assign mult_out = a * b;
 	assign out = mult_out[49:23];
+endmodule
+
+module fsm_and_iterator #(parameter NUM = 0)  (
+	clk,
+	rst,
+	done_ite_top,
+	write_address_top,
+	write_data_top,
+	out_timer,
+	sw,
+	cr_start,
+	ci_start,
+	dx,
+	dy
+);
+
+input clk;
+input rst;
+input sw;
+//output unsigned [9:0] iteration_num_top;
+output done_ite_top;
+output [18:0] write_address_top;
+output [7:0] write_data_top;
+output [31:0] out_timer;
+// zoom in/ zoom out
+input signed [26:0] cr_start;
+input signed [26:0] ci_start;
+input signed [26:0] dx;
+input signed [26:0] dy;
+
+//assign iteration_num_top = iteration_num;
+assign done_ite_top 	 = done_ite;
+assign write_data_top 	 = write_data;
+assign write_address_top = write_address;
+//wire inter_reset;
+reg 		[9:0]  x_coord ;
+reg 		[9:0]  y_coord ;
+reg 		[7:0]  write_data ;
+reg 		[18:0] write_address ;
+reg         [31:0]  out_timer_reg;
+wire signed [26:0] cr_inter;
+wire signed [26:0] ci_inter;
+wire signed [26:0] end_x;
+wire signed [26:0] end_y;
+parameter   [1:0]  STATE0 = 0;
+parameter   [1:0]  STATE1 = 1;
+parameter   [1:0]  STATE2 = 2;
+parameter   [1:0]  STATE3 = 3;
+reg signed  [26:0] cr_inter_temp;
+reg signed  [26:0] ci_inter_temp;
+wire               done_ite;
+wire        [9:0]  iteration_num;
+reg         [2:0]  state_ite, next_state_ite;
+
+assign cr_inter = cr_inter_temp;
+assign ci_inter = ci_inter_temp;
+
+// wire signed [26:0] dx;
+// wire signed [26:0] dy;
+//  assign dx[26:0] = sw ? 27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
+//  assign dy[26:0] = sw ? 27'b0000_000_0000_0100_0100_0100_0100 :27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+
+// assign the end coordiantes
+assign end_x[26:0] = 27'sd8388521;   // 1  27'b11110000001011010000111101
+assign end_y[26:0] = -27'sd8388367;  //-1
+
+//assign the output of the timer
+assign out_timer = out_timer_reg;
+
+// zoom in/ zoom out
+// wire signed [26:0] cr_start;
+// wire signed [26:0] ci_start;
+
+//-----------------fisrt Iterator--------------------------------------------------------------// 
+	always@(posedge clk) begin
+		state_ite <= next_state_ite;
+		if(rst)begin
+			// cr_inter_temp <= sw ? 27'b0 : (-27'sd16777216 + (dx * NUM)); // -2
+			// ci_inter_temp <= sw ? 27'b0 : 27'sd8388608;  // 1
+			cr_inter_temp <= cr_start + (dx * NUM); // -2
+			ci_inter_temp <= ci_start; 
+			x_coord <= 10'd_0 ;
+			y_coord <= 10'd_0 ;
+			out_timer_reg <= 10'd0;
+			write_data <= 0;
+			write_address <= 0;
+			state_ite <= STATE0;
+		end
+		else begin
+			case(state_ite)
+				STATE0: begin
+					out_timer_reg <= out_timer_reg + 1;
+					//cr_inter_temp <= -27'sd16777216  + (dx * NUM); // -2 7000000
+					//ci_inter_temp <=  27'sd8388608; // 1  8000000
+					cr_inter_temp <= cr_start + (dx * NUM); // -2
+					ci_inter_temp <= ci_start;
+					next_state_ite <= done_ite ? STATE1 : STATE0;
+				end
+				STATE1: begin
+					out_timer_reg <= out_timer_reg + 1;
+					//if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
+					if((x_coord < 10'd_319) && done_ite == 1'b1) begin
+						cr_inter_temp <= cr_inter_temp + dx + dx;
+						ci_inter_temp <= ci_inter_temp ;
+						x_coord <= (x_coord==10'd_319)?10'd_0:(x_coord + 10'd_1) ;
+						write_data <= color_reg ;
+						next_state_ite <= STATE1;
+					// end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
+					// 	if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
+					end else if((x_coord >= 10'd_319) && done_ite == 1 ) begin
+						if(y_coord >= 10'd_479) begin
+					 		next_state_ite <= STATE2;
+						end else begin
+							//cr_inter_temp <= -27'sd16777216;
+							cr_inter_temp <= cr_start;
+							x_coord <= 10'd0;
+							ci_inter_temp <= ci_inter_temp - dy;
+							y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
+							write_data <= color_reg ;
+							next_state_ite <= STATE1;
+						end
+					end else begin
+						cr_inter_temp <= cr_inter_temp ;
+						ci_inter_temp <= ci_inter_temp ;
+						x_coord <= x_coord;
+						y_coord <= y_coord;
+					//	write_enable <= 1'b_0 ;
+						write_data <= write_data ;
+						next_state_ite <= STATE1;
+					end
+					write_address <= (19'd_320 * y_coord) + x_coord ;
+				end
+				STATE2:begin 
+					out_timer_reg <= out_timer_reg;
+					next_state_ite <= STATE2;
+				end
+				
+				
+				default: begin next_state_ite <= STATE0; end
+			endcase
+		end
+	end
+
+mandelbrot_iterator interator_1 (.clk(clk),
+								 .rst(rst),
+								 .Cr(cr_inter),
+								 .Ci(ci_inter),
+								 .iteration(iteration_num),
+								 .done(done_ite)
+								 );
+
+//--------------------LOOK-UP Table to convert iteration # to colors----------------------------//
+wire [9:0] counter;
+assign counter = iteration_num;
+parameter [9:0] max_iterations = 10'd999;
+reg [7:0] color_reg;
+
+always@(*)begin
+
+		if (counter >= 999) begin
+			color_reg <= 8'b_000_000_00 ; // black
+		end
+		else if (counter >= (max_iterations >>> 1)) begin //500
+			color_reg <= 8'b_011_001_00 ; // white
+		end
+		else if (counter >= (max_iterations >>> 2)) begin //250
+			color_reg <= 8'b_011_001_00 ;
+		end
+		else if (counter >= (max_iterations >>> 3)) begin //125
+			color_reg <= 8'b_101_010_01 ;
+		end
+		else if (counter >= (max_iterations >>> 4)) begin //62
+			color_reg <= 8'b_011_001_01 ;
+		end
+		else if (counter >= (max_iterations >>> 5)) begin //31
+			color_reg <= 8'b_001_001_01 ;
+		end
+		else if (counter >= (max_iterations >>> 6)) begin //15
+			color_reg <= 8'b_011_010_10 ;
+		end
+		else if (counter >= (max_iterations >>> 7)) begin //7
+			color_reg <= 8'b_010_100_10 ;
+		end
+		else if (counter >= (max_iterations >>> 8)) begin //3
+			color_reg <= 8'b_010_100_10 ;
+		end
+		else begin
+			color_reg <= 8'b_010_100_10 ;
+		end
+	
+end
+//----------------------------------------------------------------------------------------------//
+
+
 endmodule
