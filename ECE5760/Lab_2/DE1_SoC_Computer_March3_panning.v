@@ -493,6 +493,7 @@ reg sw0_prev,  sw1_prev; // Register to hold the previous state of SW[0]
 reg signed [26:0] dx_temp_reg, dy_temp_reg; // Registers to hold the current values of dx_temp and dy_temp
 reg signed [26:0] dx_temp_ini, dy_temp_ini;
 reg signed [26:0] ci_start_ini, cr_start_ini;
+wire signed [26:0]ci_increment, cr_increment;
 // Initialize the registers
 initial begin
     sw0_prev = 0;
@@ -507,8 +508,28 @@ initial begin
 	ci_start_temp = 27'sd8388608; //1
 end
 
+wire [16:0] zero_17;
+assign zero_17 = 17'b_0;
+
 wire [9:0] zoom;
 assign zoom = {SW[5],SW[4],SW[3],SW[2],SW[1],SW[0]};
+// unsigned_mult ci_inc (.out(ci_increment),
+// 						.a(zoom[3:0]),
+// 						//.b({17{1'b0}, zoom[3:0], 6{1'b0}})
+// 						.b({zero_17, zoom[3:0], zero_17[5:0]})
+// 						);
+
+unsigned_mult ci_inc (.out(ci_increment),
+						.a(dy),
+						//.b({17{1'b0}, zoom[3:0], 6{1'b0}})
+						.b({ zoom[3:0], zero_17[5:0], zero_17})
+						);
+unsigned_mult cr_inc (.out(cr_increment),
+						.a(dx),
+						//.b({17{1'b0}}, zoom[3:0], {6{1'b0}})
+						.b({ zoom[3:0], zero_17[5:0], zero_17})
+						);
+
 always @(*) begin
     // Check for rising edge on SW[0]
     // if (~SW[0] && !sw0_prev) begin
@@ -535,10 +556,10 @@ always @(*) begin
 		end
 	end else begin
 		if(zoom && SW[5])begin //
-			cr_start_temp <= SW[4] ? (cr_start_ini >> zoom[3:0]) : (cr_start_ini << zoom[3:0]);//left   // move dx*n
+			cr_start_temp <= SW[4] ? (cr_start_ini - 100 * cr_increment) : (cr_start_ini + 100 * cr_increment);//left   // move dx
 		end
 		else if(zoom && !SW[5])begin
-			ci_start_temp <= SW[4] ? (ci_start_ini >> zoom[3:0]) : (ci_start_ini << zoom[3:0]);
+			ci_start_temp <= SW[4] ? (ci_start_ini - 100 * ci_increment) : (ci_start_ini + 100 * ci_increment);
 		end else begin
 			dx_temp_reg <= 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
 			dy_temp_reg <= 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
@@ -1342,7 +1363,7 @@ unsigned_mult get_step (.out(step),
 				
 				RIGHT: begin
 					out_timer_reg <= out_timer_reg + 1;
-					cr_inter_temp <=-27'sd16777216 + 100*dx;
+					cr_inter_temp <=-27'sd16777216 + 10*dx;
 					ci_inter_temp <= 27'sd8388608;
 					write_address <= (19'd_320 * y_coord) + x_coord ;
 					next_state_ite <= done_ite ? STATE1 : RIGHT;
@@ -1351,7 +1372,7 @@ unsigned_mult get_step (.out(step),
 
 				LEFT: begin
 					out_timer_reg <= out_timer_reg + 1;
-					cr_inter_temp <=-27'sd16777216 - 100*dx;
+					cr_inter_temp <=-27'sd16777216 - 10*dx;
 					ci_inter_temp <= 27'sd8388608;
 					write_address <= (19'd_320 * y_coord) + x_coord ;
 					next_state_ite <= done_ite ? STATE1 : LEFT;
