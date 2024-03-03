@@ -1,4 +1,5 @@
-//added fix-point multiplier
+//Graphic works well, but counter sometimes doesn't
+//Date: Mar 3rd, 2024
 
 
 module DE1_SoC_Computer (
@@ -481,74 +482,147 @@ wire       [26:0] dy;
 
 reg signed [26:0] cr_start_temp;
 reg signed [26:0] ci_start_temp;
-reg        [26:0] dx_temp;
-reg 	   [26:0] dy_temp;
+wire        [26:0] dx_temp;
+wire 	   [26:0] dy_temp;
 
-always@(*) begin
-	if (SW[0]) begin 
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp = 27'sd8388608; //1
-		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
 
-		// if (SW[9]) begin // right panning
-		// 	cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
-		// 	ci_start_temp = 27'sd8388608; //1
-		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
-		// end else begin
-		// 	cr_start_temp = -27'sd16777216; //-2
-		// 	ci_start_temp = 27'sd8388608; //1
-		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+//-----------------------zoom in function--------------------------------------------//  tbl
 
-		// end
-		// if (SW[8]) begin // down panning
-		// 	cr_start_temp = -27'sd16777216; //-2
-		// 	ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
-		// end else begin
-		// 	cr_start_temp = -27'sd16777216; //-2
-		// 	ci_start_temp = 27'sd8388608; //1
-		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
-		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
 
-		// end
-	
-	// end else if (SW[7]) begin // zoom in deeper
-	// 	cr_start_temp = -27'sd16777216;//2
-	// 	ci_start_temp = 27'sd8388608; //1
-	// 	dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
-	// 	dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
-
-	// 	if (SW[9]) begin // right panning
-	// 		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
-	// 		ci_start_temp = 27'sd8388608; //1
-	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
-	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
-	// 	end else begin
-	// 		cr_start_temp = -27'sd16777216;//2
-	// 		ci_start_temp = 27'sd8388608; //1
-	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
-	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
-	// 	end
-	// 	if (SW[8]) begin // down panning
-	// 		cr_start_temp = -27'sd16777216; //-2
-	// 		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
-	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
-	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
-	// 	end else begin
-	// 		cr_start_temp = -27'sd16777216;//2
-	// 		ci_start_temp = 27'sd8388608; //1
-	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
-	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
-	// 	end
-	end else begin
-		cr_start_temp = -27'sd16777216; //-2
-		ci_start_temp = 27'sd8388608; //1
-		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
-		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
-	end
+reg sw0_prev,  sw1_prev; // Register to hold the previous state of SW[0]
+reg signed [26:0] dx_temp_reg, dy_temp_reg; // Registers to hold the current values of dx_temp and dy_temp
+reg signed [26:0] dx_temp_ini, dy_temp_ini;
+reg signed [26:0] ci_start_ini, cr_start_ini;
+// Initialize the registers
+initial begin
+    sw0_prev = 0;
+	sw1_prev = 0;
+    dx_temp_reg = 27'b0000_000_0000_0100_1100_1100_1100; // Initial value for dx_temp
+    dy_temp_reg = 27'b0000_000_0000_0100_0100_0100_0100; // Initial value for dy_temp
+    dx_temp_ini = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+    dy_temp_ini = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+	cr_start_ini = -27'sd16777216; //-2
+	ci_start_ini = 27'sd8388608; //1
+	cr_start_temp = -27'sd16777216; //-2
+	ci_start_temp = 27'sd8388608; //1
 end
+
+wire [9:0] zoom;
+assign zoom = {SW[5],SW[4],SW[3],SW[2],SW[1],SW[0]};
+always @(*) begin
+    // Check for rising edge on SW[0]
+    // if (~SW[0] && !sw0_prev) begin
+    //     // Halve dx_temp_reg and dy_temp_reg on a rising edge
+    //     dx_temp_reg <= dx_temp_reg >> 1; // Right shift by 1 to halve the value
+    //     dy_temp_reg <= dy_temp_reg >> 1; // Right shift by 1 to halve the value
+    // end
+	// else if (SW[1] && !sw1_prev) begin
+    //     // Halve dx_temp_reg and dy_temp_reg on a rising edge
+    //     dx_temp_reg <= dx_temp_reg << 1; // Right shift by 1 to halve the value
+    //     dy_temp_reg <= dy_temp_reg << 1; // Right shift by 1 to halve the value
+    // end
+	if (SW[6]) begin
+		if(zoom && SW[5])begin                           //  zoom out 
+			dx_temp_reg <= dx_temp_ini << zoom[4:0];
+			dy_temp_reg <= dy_temp_ini << zoom[4:0];
+		end
+		else if(zoom && !SW[5])begin                     // zoom in
+			dx_temp_reg <= dx_temp_ini >> zoom[4:0];
+			dy_temp_reg <= dy_temp_ini >> zoom[4:0];
+		end else begin
+			dx_temp_ini = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+			dy_temp_ini = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+		end
+	end else begin
+		if(zoom && SW[5])begin //
+			cr_start_temp <= SW[4] ? (cr_start_ini >> zoom[3:0]) : (cr_start_ini << zoom[3:0]);//left   // move dx*n
+		end
+		else if(zoom && !SW[5])begin
+			ci_start_temp <= SW[4] ? (ci_start_ini >> zoom[3:0]) : (ci_start_ini << zoom[3:0]);
+		end else begin
+			dx_temp_reg <= 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+			dy_temp_reg <= 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+			cr_start_temp <= -27'sd16777216; //-2
+			ci_start_temp <= 27'sd8388608; //1
+		end
+	end
+
+end
+
+// Use dx_temp_reg and dy_temp_reg in your calculations instead of dx_temp and dy_temp
+assign dx_temp = dx_temp_reg;
+assign dy_temp = dy_temp_reg;
+
+
+
+//------------------------------------------------------------------------------------//  tbl
+
+
+// always@(*) begin
+// 	if (SW[0]) begin 
+// 		cr_start_temp = -27'sd16777216; //-2
+// 		ci_start_temp = 27'sd8388608; //1
+// 		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+// 		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+
+// 		// if (SW[9]) begin // right panning
+// 		// 	cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+// 		// 	ci_start_temp = 27'sd8388608; //1
+// 		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+// 		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+// 		// end else begin
+// 		// 	cr_start_temp = -27'sd16777216; //-2
+// 		// 	ci_start_temp = 27'sd8388608; //1
+// 		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+// 		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+
+// 		// end
+// 		// if (SW[8]) begin // down panning
+// 		// 	cr_start_temp = -27'sd16777216; //-2
+// 		// 	ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
+// 		// end else begin
+// 		// 	cr_start_temp = -27'sd16777216; //-2
+// 		// 	ci_start_temp = 27'sd8388608; //1
+// 		// 	dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+// 		// 	dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+
+// 		// end
+	
+// 	// end else if (SW[7]) begin // zoom in deeper
+// 	// 	cr_start_temp = -27'sd16777216;//2
+// 	// 	ci_start_temp = 27'sd8388608; //1
+// 	// 	dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+// 	// 	dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+
+// 	// 	if (SW[9]) begin // right panning
+// 	// 		cr_start_temp = cr_start_temp + 27'b0000_010_0000_0000_0000_0000_0000; //-2
+// 	// 		ci_start_temp = 27'sd8388608; //1
+// 	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+// 	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+// 	// 	end else begin
+// 	// 		cr_start_temp = -27'sd16777216;//2
+// 	// 		ci_start_temp = 27'sd8388608; //1
+// 	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+// 	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+// 	// 	end
+// 	// 	if (SW[8]) begin // down panning
+// 	// 		cr_start_temp = -27'sd16777216; //-2
+// 	// 		ci_start_temp =  ci_start_temp - 27'b0000_010_0000_0000_0000_0000_0000;//1
+// 	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+// 	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+// 	// 	end else begin
+// 	// 		cr_start_temp = -27'sd16777216;//2
+// 	// 		ci_start_temp = 27'sd8388608; //1
+// 	// 		dx_temp =  27'b0000_000_0000_0010_0110_0110_0110;// 0.75/640
+// 	// 		dy_temp =  27'b0000_000_0000_0010_0010_0010_0010;// 0.5/480
+// 	// 	end
+// 	end else begin
+// 		cr_start_temp = -27'sd16777216; //-2
+// 		ci_start_temp = 27'sd8388608; //1
+// 		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+// 		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+// 	end
+// end
 // assign cr_start_temp = SW[0] ? -27'sd16777216 : -27'sd16777216;
 // assign ci_start_temp = SW[0] ?  27'sd8388608   :  27'sd8388608;
 // assign dx_temp 		 = SW[0] ?  27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;
@@ -1199,13 +1273,13 @@ wire signed [26:0] cr_inter;
 wire signed [26:0] ci_inter;
 wire signed [26:0] end_x;
 wire signed [26:0] end_y;
-parameter   [2:0]  STATE0 = 0;
-parameter   [2:0]  STATE1 = 1;
-parameter   [2:0]  STATE2 = 2;
-parameter   [2:0]  STATE3 = 3;
-parameter   [2:0]  RIGHT  = 4;
-parameter   [2:0]  LEFT   = 5;
-parameter   [2:0]  RESET  = 6;
+parameter   [2:0]  STATE0 = 3'd0;
+parameter   [2:0]  STATE1 = 3'd1;
+parameter   [2:0]  STATE2 = 3'd2;
+parameter   [2:0]  STATE3 = 3'd3;
+parameter   [2:0]  RIGHT  = 3'd4;
+parameter   [2:0]  LEFT   = 3'd5;
+parameter   [2:0]  RESET  = 3'd6;
 reg signed  [26:0] cr_inter_temp;
 reg signed  [26:0] ci_inter_temp;
 wire               done_ite;
@@ -1257,11 +1331,12 @@ unsigned_mult get_step (.out(step),
 		else begin
 			case(state_ite)
 				STATE0: begin
-					out_timer_reg <= out_timer_reg + 1;
+					out_timer_reg <= out_timer_reg + 3;
 					//cr_inter_temp <= -27'sd16777216  + (dx * NUM); // -2 7000000
 					//ci_inter_temp <=  27'sd8388608; // 1  8000000
 					cr_inter_temp <= cr_start + step; // -2
 					ci_inter_temp <= ci_start;
+					write_address <= (19'd_320 * y_coord) + x_coord ;
 					next_state_ite <= done_ite ? STATE1 : STATE0;
 				end
 				
@@ -1269,6 +1344,7 @@ unsigned_mult get_step (.out(step),
 					out_timer_reg <= out_timer_reg + 1;
 					cr_inter_temp <=-27'sd16777216 + 100*dx;
 					ci_inter_temp <= 27'sd8388608;
+					write_address <= (19'd_320 * y_coord) + x_coord ;
 					next_state_ite <= done_ite ? STATE1 : RIGHT;
 
 				end
@@ -1277,38 +1353,39 @@ unsigned_mult get_step (.out(step),
 					out_timer_reg <= out_timer_reg + 1;
 					cr_inter_temp <=-27'sd16777216 - 100*dx;
 					ci_inter_temp <= 27'sd8388608;
+					write_address <= (19'd_320 * y_coord) + x_coord ;
 					next_state_ite <= done_ite ? STATE1 : LEFT;
 				end
 
 				STATE1: begin
-					out_timer_reg <= out_timer_reg + 1;
-					if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
-					//if((x_coord < 10'd_319) && done_ite == 1'b1) begin
-						cr_inter_temp <= cr_inter_temp + dx + dx;
-						ci_inter_temp <= ci_inter_temp ;
-						x_coord <= (x_coord==10'd_319)?10'd_0:(x_coord + 10'd_1) ;
-						write_data <= color_reg ;
-						next_state_ite <= STATE1;
-					 end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
-						if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
-					//end else if((x_coord >= 10'd_319) && done_ite == 1 ) begin
-					//	if(y_coord >= 10'd_479) begin
-					 		next_state_ite <= STATE2;
-						end else begin
-							//cr_inter_temp <= -27'sd16777216;
-							cr_inter_temp <= cr_start;
-							x_coord <= 10'd0;
-							ci_inter_temp <= ci_inter_temp - dy;
-							y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
+					out_timer_reg <= out_timer_reg + 2;
+					if(done_ite)begin
+						//if(cr_inter_temp < end_x) begin
+						if(x_coord < 10'd_319 ) begin
+							cr_inter_temp <= cr_inter_temp + dx + dx;
+							ci_inter_temp <= ci_inter_temp ;
+							x_coord <= (x_coord==10'd_319)?10'd_0:(x_coord + 10'd_1) ;
 							write_data <= color_reg ;
 							next_state_ite <= STATE1;
+						//end else if(cr_inter_temp >=  end_x) begin
+						end else if (x_coord >= 10'd_319 ) begin
+					//	end else begin
+							if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
+								next_state_ite <= STATE2;
+							end else begin
+								cr_inter_temp <= cr_start;
+								x_coord <= 10'd0;
+								ci_inter_temp <= ci_inter_temp - dy;
+								y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
+								write_data <= color_reg ;
+								next_state_ite <= STATE1;
+							end
 						end
 					end else begin
 						cr_inter_temp <= cr_inter_temp ;
 						ci_inter_temp <= ci_inter_temp ;
 						x_coord <= x_coord;
 						y_coord <= y_coord;
-					//	write_enable <= 1'b_0 ;
 						write_data <= write_data ;
 						next_state_ite <= STATE1;
 					end
@@ -1336,7 +1413,10 @@ unsigned_mult get_step (.out(step),
 				end
 				
 				
-				default: begin next_state_ite <= STATE0; end
+				default: begin 
+					cr_inter_temp <= cr_inter_temp; // -2
+					ci_inter_temp <= ci_inter_temp;
+				 end
 			endcase
 		end
 	end
