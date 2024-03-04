@@ -1,4 +1,4 @@
-//Not really work week 2
+//4 iterators work
 
 
 module DE1_SoC_Computer (
