@@ -1,4 +1,4 @@
-//Not really work week 2
+//No minecraft anymore
 
 
 module DE1_SoC_Computer (
