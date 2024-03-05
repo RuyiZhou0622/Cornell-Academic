@@ -1,4 +1,4 @@
-//4 iterators work
+//Not really work week 2
 
 
 module DE1_SoC_Computer (
@@ -1212,7 +1212,8 @@ parameter   [2:0]  STATE3 = 3'd3;
 parameter   [2:0]  RIGHT  = 3'd4;
 parameter   [2:0]  LEFT   = 3'd5;
 parameter   [2:0]  RESET  = 3'd6;
-parameter   [26:0] NUM_iterators = 27'b0100_000_0000_0000_0000_0000_0000;
+parameter   [2:0]  INI    = 3'd7;
+parameter   [26:0] NUM_iterators = 27'b1111_000_0000_0000_0000_0000_0000;
 reg signed  [26:0] cr_inter_temp;
 reg signed  [26:0] ci_inter_temp;
 wire               done_ite;
@@ -1239,20 +1240,43 @@ assign out_timer = out_timer_reg;
 // wire signed [26:0] ci_start;
 
 //store for the steps
-wire [26:0] step;
+//wire [26:0] step;
+reg [26:0] step;
+reg [26:0] c;
+reg done_initial;
+//wire [26:0] dx_incre_mid;
 wire [26:0] dx_incre;
 
-unsigned_mult get_step (.out(step),
-						.a(dx),
-						.b(NUM)
-						);
+// unsigned_mult get_step (.out(step),
+// 						.a(dx),
+// 						.b(NUM)
+// 						);
 
-unsigned_mult get_dx_incre (.out(dx_incre),
-							.a(dx),
-							.b(NUM_iterators)
-							);
+always@(posedge clk)begin
+	if(rst) begin
+		step 		 <= dx;
+		c 	  		 <= 0;
+		done_initial <= 0;
+	end else begin
+		if(c != NUM) begin
+			step <= step + dx;
+			c    <= c + 27'b0001_000_0000_0000_0000_0000_0000;
+		end else begin
+			done_initial <= 1;
+			step <= step;
+		end
+	end
+end
+
+// unsigned_mult get_dx_incre (.out(dx_incre),
+// 							.a(dx),
+// 							.b(NUM_iterators)
+// 							);
+
+assign dx_incre = dx + dx + dx + dx;
 
 //-----------------fisrt Iterator--------------------------------------------------------------// 
+	
 	always@(posedge clk) begin
 		state_ite <= next_state_ite;
 		if(rst)begin
@@ -1265,10 +1289,13 @@ unsigned_mult get_dx_incre (.out(dx_incre),
 			out_timer_reg <= 10'd0;
 			write_data <= 0;
 			write_address <= 0;
-			state_ite <= STATE0;
+			state_ite <= INI;
 		end
 		else begin
 			case(state_ite)
+				INI:begin
+					next_state_ite <= done_initial ? STATE0 : INI;
+				end
 				STATE0: begin
 					out_timer_reg <= out_timer_reg + 3;
 					//cr_inter_temp <= -27'sd16777216  + (dx * NUM); // -2 7000000
@@ -1326,18 +1353,21 @@ unsigned_mult get_dx_incre (.out(dx_incre),
 					// write_address <= (19'd_320 * y_coord) + x_coord ;
 					out_timer_reg <= out_timer_reg + 2;
 					if(done_ite)begin
-						if(cr_inter_temp < end_x) begin
+					//////	if(cr_inter_temp < end_x) begin
+						if(x_coord < 10'd_160)begin
 							cr_inter_temp <= cr_inter_temp + dx_incre;
 							ci_inter_temp <= ci_inter_temp ;
-							x_coord <= (x_coord==10'd_159)?10'd_0:(x_coord + 10'd_1) ;
+					//////		x_coord <= (x_coord==10'd_159)?10'd_0:(x_coord + 10'd_1) ;
+							x_coord <= x_coord + 10'd_1 ;
 							write_data <= color_reg ;
 							next_state_ite <= STATE1;
-						end else if(cr_inter_temp >=  end_x) begin
+					//////	end else if(cr_inter_temp >=  end_x) begin
+						end else begin
 					//	end else begin
 							if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
 								next_state_ite <= STATE2;
 							end else begin
-								cr_inter_temp <= cr_start;
+								cr_inter_temp <= cr_start + step;
 								x_coord <= 10'd0;
 								ci_inter_temp <= ci_inter_temp - dy;
 								y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
@@ -1378,7 +1408,7 @@ unsigned_mult get_dx_incre (.out(dx_incre),
 				
 				
 				default: begin 
-					next_state_ite <= STATE0;
+					next_state_ite <= INI;
 					cr_inter_temp <= cr_inter_temp; // -2
 					ci_inter_temp <= ci_inter_temp;
 				 end
