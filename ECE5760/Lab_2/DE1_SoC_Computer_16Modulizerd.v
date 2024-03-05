@@ -1,3 +1,4 @@
+//16 iterators worked ! Yeah!!!
 
 
 module DE1_SoC_Computer (
@@ -364,13 +365,13 @@ wire			[15: 0]	hex3_hex0;
 //assign HEX1 = ~hex3_hex0[14: 8];
 //assign HEX2 = ~hex3_hex0[22:16];
 //assign HEX3 = ~hex3_hex0[30:24];
-assign HEX4 = 7'b1111111;
-assign HEX5 = 7'b1111111;
+// assign HEX4 = 7'b1111111;
+// assign HEX5 = 7'b1111111;
 
-HexDigit Digit0(HEX0, hex3_hex0[3:0]);
-HexDigit Digit1(HEX1, hex3_hex0[7:4]);
-HexDigit Digit2(HEX2, hex3_hex0[11:8]);
-HexDigit Digit3(HEX3, hex3_hex0[15:12]);
+// HexDigit Digit0(HEX0, hex3_hex0[3:0]);
+// HexDigit Digit1(HEX1, hex3_hex0[7:4]);
+// HexDigit Digit2(HEX2, hex3_hex0[11:8]);
+// HexDigit Digit3(HEX3, hex3_hex0[15:12]);
 
 // VGA clock and reset lines
 wire vga_pll_lock ;
@@ -378,9 +379,11 @@ wire vga_pll ;
 reg  vga_reset ;
 
 // M10k memory control and data
-wire 		[7:0] 	M10k_out_1 ;
-wire 		[7:0] 	M10k_out_2 ;
-wire        [7:0]   M10k_out;
+wire 		[7:0] 	M10k_out_1 [15:0] ;
+// wire 		[7:0] 	M10k_out_2 ;
+// wire 		[7:0] 	M10k_out_3 ;
+// wire 		[7:0] 	M10k_out_4 ;
+reg         [7:0]   M10k_out;
 //reg 		[7:0] 	write_data ;
 //reg 		[18:0] 	write_address ;
 reg 		[18:0] 	read_address ;
@@ -399,6 +402,8 @@ reg 		[7:0] 	arbiter_state ;
 wire 		[9:0]		next_x ;
 wire 		[9:0] 	next_y ;
 
+assign LEDR[9:0] = SW[9:0];
+
 always@(posedge M10k_pll) begin
 	// Zero everything in reset
 	if (~KEY[0]) begin
@@ -415,26 +420,65 @@ always@(posedge M10k_pll) begin
 	end
 end
 
-// Instantiate memories
-M10K_1000_8 pixel_data_1( .q(M10k_out_1), // contains pixel color (8 bit) for display
-						.d(write_data_top_1),
-						.write_address(write_address_top_1),
-						.read_address((19'd_320*next_y) + (next_x>>1)),
-						.we(done_ite_top_1),
-						.clk(M10k_pll)
-);
 
-M10K_1000_8 pixel_data_2( .q(M10k_out_2), // contains pixel color (8 bit) for display
-						.d(write_data_top_2),
-						.write_address(write_address_top_2),
-						.read_address((19'd_320*next_y) + (next_x>>1)),
-						.we(done_ite_top_2),
-						.clk(M10k_pll)
-);
+// M10K_1000_8 pixel_data_1( .q(M10k_out_1), // contains pixel color (8 bit) for display
+// 						.d(write_data_top_1),
+// 						.write_address(write_address_top_1),
+// 						.read_address(((19'd_640 >> 2)*next_y) + (next_x>>2)),
+// 						.we(done_ite_top_1),
+// 						.clk(M10k_pll)
+// );
+
+// M10K_1000_8 pixel_data_2( .q(M10k_out_2), // contains pixel color (8 bit) for display
+// 						.d(write_data_top_2),
+// 						.write_address(write_address_top_2),
+// 						.read_address(((19'd_640 >> 2)*next_y) + (next_x>>2)),
+// 						.we(done_ite_top_2),
+// 						.clk(M10k_pll)
+// );
+
+// M10K_1000_8 pixel_data_3( .q(M10k_out_3), // contains pixel color (8 bit) for display
+// 						.d(write_data_top_3),
+// 						.write_address(write_address_top_3),
+// 						.read_address(((19'd_640 >> 2)*next_y) + (next_x>>2)),
+// 						.we(done_ite_top_3),
+// 						.clk(M10k_pll)
+// );
+
+// M10K_1000_8 pixel_data_4( .q(M10k_out_4), // contains pixel color (8 bit) for display
+// 						.d(write_data_top_4),
+// 						.write_address(write_address_top_4),
+// 						.read_address(((19'd_640 >> 2)*next_y) + (next_x>>2)),
+// 						.we(done_ite_top_4),
+// 						.clk(M10k_pll)
+// );
+
+//Muxiplier to choose the memory blocks
+always@(*)begin
+	case(next_x[3:0])
+		4'b0000:  M10k_out <= M10k_out_1[0];
+		4'b0001:  M10k_out <= M10k_out_1[1];
+		4'b0010:  M10k_out <= M10k_out_1[2];
+		4'b0011:  M10k_out <= M10k_out_1[3];
+		4'b0100:  M10k_out <= M10k_out_1[4];
+		4'b0101:  M10k_out <= M10k_out_1[5];
+		4'b0110:  M10k_out <= M10k_out_1[6];
+		4'b0111:  M10k_out <= M10k_out_1[7];
+		4'b1000:  M10k_out <= M10k_out_1[8];
+		4'b1001:  M10k_out <= M10k_out_1[9];
+		4'b1010:  M10k_out <= M10k_out_1[10];
+		4'b1011:  M10k_out <= M10k_out_1[11];
+		4'b1100:  M10k_out <= M10k_out_1[12];
+		4'b1101:  M10k_out <= M10k_out_1[13];
+		4'b1110:  M10k_out <= M10k_out_1[14];
+		4'b1111:  M10k_out <= M10k_out_1[15];
+		default: M10k_out <= M10k_out_1[0];
+	endcase
+end
+
+//assign M10k_out = next_x[0] ? M10k_out_2 : M10k_out_1;
 
 // Instantiate VGA driver		
-
-assign M10k_out = next_x[0] ? M10k_out_2 : M10k_out_1;
 vga_driver DUT   (	.clock(vga_pll), 
 					.reset(vga_reset),
 					.color_in(M10k_out),	// Pixel color (8-bit) from memory
@@ -450,49 +494,190 @@ vga_driver DUT   (	.clock(vga_pll),
 					.blank(VGA_BLANK_N)
 );
 
-// mandelbrot_iterator inter1(
-//     .clk(M10k_pll),
-//     .rst(~KEY[0]),
-//     .Cr(cr_inter),
-//     .Ci(ci_inter),
-//     .iteration(iteration_num),
-// 	.done(done_ite)
+//zoom in/ zoom out
+wire signed[26:0] cr_start;
+wire signed[26:0] ci_start;
+wire       [26:0] dx;
+wire       [26:0] dy;
+
+reg signed [26:0] cr_start_temp;
+reg signed [26:0] ci_start_temp;
+reg        [26:0] dx_temp;
+reg 	   [26:0] dy_temp;
+
+always@(*) begin
+	if (SW[0]) begin 
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp =  27'b0000_000_0000_0100_1100_1100_1100;// 1.5/640
+		dy_temp = 27'b0000_000_0000_0100_0100_0100_0100;// 1/480
+
+		
+	end else begin
+		cr_start_temp = -27'sd16777216; //-2
+		ci_start_temp = 27'sd8388608; //1
+		dx_temp = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640;
+		dy_temp = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+	end
+end
+
+wire [18:0] write_address_top [15:0];
+// wire [18:0] write_address_top_2;
+// wire [18:0] write_address_top_3;
+// wire [18:0] write_address_top_4;
+wire [7:0]  write_data_top [15:0];
+// wire [7:0]  write_data_top_2;
+// wire [7:0]  write_data_top_3;
+// wire [7:0]  write_data_top_4;
+wire        done_ite_top [15:0];
+// wire        done_ite_top_2;
+// wire        done_ite_top_3;
+// wire        done_ite_top_4;
+wire [31:0]  out_timer [15:0];
+// wire [31:0]  out_timer_2;
+// wire [31:0]  out_timer_3;
+// wire [31:0]  out_timer_4;
+wire [31:0]  timer_count;
+
+assign dx = dx_temp;
+assign dy = dy_temp;
+assign cr_start = cr_start_temp;
+assign ci_start = ci_start_temp;
+
+// Instantiate memories
+// Generate block to create 16 iterators and 16 memory blocks
+    genvar i;
+    generate
+        for (i = 0; i < 16; i = i + 1) begin : gen_register
+
+            //Instantiation of one memory block
+            M10K_1000_8 pixel_data_1( .q(M10k_out_1[i]), // contains pixel color (8 bit) for display
+						.d(write_data_top[i]),
+						.write_address(write_address_top[i]),
+						.read_address(((19'd_640 >> 4)*next_y) + (next_x>>4)),
+						.we(done_ite_top[i]),
+						.clk(M10k_pll)
+			);
+			//Instantiation of one iterator 
+			fsm_and_iterator #(.NUM(i << 23)) iter_1 (
+								.clk(M10k_pll),
+								.rst(~KEY[0]),
+								.done_ite_top(done_ite_top[i]),
+								.write_address_top(write_address_top[i]),
+								.write_data_top(write_data_top[i]),
+								.out_timer(out_timer[i]),
+								.cr_start(cr_start),
+								.ci_start(ci_start),
+								.dx(dx),
+								.dy(dy),
+								.key_left(~KEY[3]),
+								.key_right(~KEY[2]),
+								.max_iter_num(SW[9:7])
+							);
+        end
+    endgenerate
+
+
+// fsm_and_iterator #(.NUM(27'b0000_000_0000_0000_0000_0000_0000)) iter_1 (
+// 	.clk(M10k_pll),
+// 	.rst(~KEY[0]),
+// 	.done_ite_top(done_ite_top_1),
+// 	.write_address_top(write_address_top_1),
+// 	.write_data_top(write_data_top_1),
+// 	.out_timer(out_timer_1),
+// 	.cr_start(cr_start),
+// 	.ci_start(ci_start),
+// 	.dx(dx),
+// 	.dy(dy),
+// 	.key_left(~KEY[3]),
+// 	.key_right(~KEY[2]),
+// 	.max_iter_num(SW[9:7])
+// );
+
+// fsm_and_iterator #(.NUM(27'b0001_000_0000_0000_0000_0000_0000)) iter_2 (
+// 	.clk(M10k_pll),
+// 	.rst(~KEY[0]),
+// 	.done_ite_top(done_ite_top_2),
+// 	.write_address_top(write_address_top_2),
+// 	.write_data_top(write_data_top_2),
+// 	.out_timer(out_timer_2),
+// 	.cr_start(cr_start),
+// 	.ci_start(ci_start),
+// 	.dx(dx),
+// 	.dy(dy),
+// 	.key_left(~KEY[3]),
+// 	.key_right(~KEY[2]),
+// 	.max_iter_num(SW[9:7])
+// );
+
+// fsm_and_iterator #(.NUM(27'b0010_000_0000_0000_0000_0000_0000)) iter_3 (
+// 	.clk(M10k_pll),
+// 	.rst(~KEY[0]),
+// 	.done_ite_top(done_ite_top_3),
+// 	.write_address_top(write_address_top_3),
+// 	.write_data_top(write_data_top_3),
+// 	.out_timer(out_timer_3),
+// 	.cr_start(cr_start),
+// 	.ci_start(ci_start),
+// 	.dx(dx),
+// 	.dy(dy),
+// 	.key_left(~KEY[3]),
+// 	.key_right(~KEY[2]),
+// 	.max_iter_num(SW[9:7])
+// );
+
+// fsm_and_iterator #(.NUM(27'b0011_000_0000_0000_0000_0000_0000)) iter_4 (
+// 	.clk(M10k_pll),
+// 	.rst(~KEY[0]),
+// 	.done_ite_top(done_ite_top_4),
+// 	.write_address_top(write_address_top_4),
+// 	.write_data_top(write_data_top_4),
+// 	.out_timer(out_timer_4),
+// 	.cr_start(cr_start),
+// 	.ci_start(ci_start),
+// 	.dx(dx),
+// 	.dy(dy),
+// 	.key_left(~KEY[3]),
+// 	.key_right(~KEY[2]),
+// 	.max_iter_num(SW[9:7])
 // );
 
 
-wire [18:0] write_address_top_1;
-wire [18:0] write_address_top_2;
-wire [7:0]  write_data_top_1;
-wire [7:0]  write_data_top_2;
-wire        done_ite_top_1;
-wire        done_ite_top_2;
-wire [31:0]  out_timer_1;
-wire [31:0]  out_timer_2;
-wire [31:0]  timer_count;
-
-
-fsm_and_iterator #(0) iter_1 (
-	.clk(M10k_pll),
-	.rst(~KEY[0]),
-	.done_ite_top(done_ite_top_1),
-	.write_address_top(write_address_top_1),
-	.write_data_top(write_data_top_1),
-	.out_timer(out_timer_1),
-	.sw(SW[0])
-);
-
-fsm_and_iterator #(1) iter_2 (
-	.clk(M10k_pll),
-	.rst(~KEY[0]),
-	.done_ite_top(done_ite_top_2),
-	.write_address_top(write_address_top_2),
-	.write_data_top(write_data_top_2),
-	.out_timer(out_timer_2),
-	.sw(SW[0])
-);
 
 //----------------------counter for the Timer---------------------------//
-assign timer_count = (out_timer_1 > out_timer_2) ? out_timer_1 : out_timer_2;
+wire [23:0] coverted_timer;
+
+//assign timer_count = (out_timer[0] > out_timer[1]) ? out_timer[0] : out_timer[1];
+assign coverted_timer = timer_count / 100000; //ignore the fraction part to save the hardware resource.
+
+HexDigit Digit0(HEX0, coverted_timer[3:0]);
+HexDigit Digit1(HEX1, coverted_timer[7:4]);
+HexDigit Digit2(HEX2, coverted_timer[11:8]);
+HexDigit Digit3(HEX3, coverted_timer[15:12]);
+HexDigit Digit4(HEX4, coverted_timer[19:16]);
+HexDigit Digit5(HEX5, coverted_timer[23:20]);
+
+find_max max_timer(.in0(out_timer[0]),
+				   .in1(out_timer[1]),
+				   .in2(out_timer[2]),
+				   .in3(out_timer[3]),
+				   .in4(out_timer[4]),
+				   .in5(out_timer[5]),
+				   .in6(out_timer[6]),
+				   .in7(out_timer[7]),
+				   .in8(out_timer[8]),
+				   .in9(out_timer[9]),
+				   .in10(out_timer[10]),
+				   .in11(out_timer[11]),
+				   .in12(out_timer[12]),
+				   .in13(out_timer[13]),
+				   .in14(out_timer[14]),
+				   .in15(out_timer[15]),	
+    			   .max_out(timer_count)
+    );
+
+
+
 //----------------------------------------------------------------------//
 
 
@@ -845,7 +1030,7 @@ module M10K_1000_8(
 );
 	 // force M10K ram style
 	 // 307200 words of 8 bits
-    reg [7:0] mem [153600:0];//153600  /* synthesis ramstyle = "no_rw_check, M10K" */;
+    reg [7:0] mem [19200:0];//153600  /* synthesis ramstyle = "no_rw_check, M10K" */;
 	 
     always @ (posedge clk) begin
         if (we) begin
@@ -862,20 +1047,22 @@ module mandelbrot_iterator (
     Cr,
     Ci,
     iteration,
-	done
+	done,
+	max_iter
 );
     
     input [26:0] Cr;
     input [26:0] Ci;
     input clk;
     input rst;
-    output unsigned [9:0] iteration;
+	input [11:0] max_iter;
+    output unsigned [11:0] iteration;
 	output done;
 
     parameter IDLE = 2'b00;
     parameter CALC = 2'b01;
     parameter DONE = 2'b10;
-    parameter MAX = 10'd1000;
+   // parameter MAX = 10'd1000;
 
 
     reg signed [26:0] Z_N_r_sq;
@@ -947,7 +1134,7 @@ module mandelbrot_iterator (
                         Z_N_i_sq <= Z_N_i_sq_temp;
                         Z_N_r <= Z_NR_temp;
                         Z_N_i <= Z_NRI_temp;
-                        if (temp_result > 27'h2000000 || num_iterations >= 10'd999) begin
+                        if (temp_result > 27'h2000000 || num_iterations >= max_iter) begin
                             done_signal <= 0;
                             next_state <= DONE;
                         end else begin
@@ -1040,17 +1227,30 @@ module fsm_and_iterator #(parameter NUM = 0)  (
 	write_address_top,
 	write_data_top,
 	out_timer,
-	sw
+	cr_start,
+	ci_start,
+	dx,
+	dy,
+	key_left,
+	key_right,
+	max_iter_num
 );
 
 input clk;
 input rst;
-input sw;
+input key_left;
+input key_right;																						
 //output unsigned [9:0] iteration_num_top;
 output done_ite_top;
 output [18:0] write_address_top;
 output [7:0] write_data_top;
 output [31:0] out_timer;
+// zoom in/ zoom out
+input signed [26:0] cr_start;
+input signed [26:0] ci_start;
+input signed [26:0] dx;
+input signed [26:0] dy;
+input [2:0] max_iter_num;
 
 //assign iteration_num_top = iteration_num;
 assign done_ite_top 	 = done_ite;
@@ -1066,10 +1266,15 @@ wire signed [26:0] cr_inter;
 wire signed [26:0] ci_inter;
 wire signed [26:0] end_x;
 wire signed [26:0] end_y;
-parameter   [1:0]  STATE0 = 0;
-parameter   [1:0]  STATE1 = 1;
-parameter   [1:0]  STATE2 = 2;
-parameter   [1:0]  STATE3 = 3;
+parameter   [2:0]  STATE0 = 3'd0;
+parameter   [2:0]  STATE1 = 3'd1;
+parameter   [2:0]  STATE2 = 3'd2;
+parameter   [2:0]  STATE3 = 3'd3;
+parameter   [2:0]  RIGHT  = 3'd4;
+parameter   [2:0]  LEFT   = 3'd5;
+parameter   [2:0]  RESET  = 3'd6;
+parameter   [2:0]  INI    = 3'd7;
+parameter   [26:0] NUM_iterators = 27'b1111_000_0000_0000_0000_0000_0000;
 reg signed  [26:0] cr_inter_temp;
 reg signed  [26:0] ci_inter_temp;
 wire               done_ite;
@@ -1079,10 +1284,10 @@ reg         [2:0]  state_ite, next_state_ite;
 assign cr_inter = cr_inter_temp;
 assign ci_inter = ci_inter_temp;
 
-wire signed [26:0] dx;
-wire signed [26:0] dy;
-assign dx[26:0] = 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
-assign dy[26:0] = 27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
+// wire signed [26:0] dx;
+// wire signed [26:0] dy;
+//  assign dx[26:0] = sw ? 27'b0000_000_0000_0100_1100_1100_1100 : 27'b0000_000_0000_1001_1001_1001_1001;  // 3/640
+//  assign dy[26:0] = sw ? 27'b0000_000_0000_0100_0100_0100_0100 :27'b0000_000_0000_1000_1000_1000_1000 ;  // 2/480
 
 // assign the end coordiantes
 assign end_x[26:0] = 27'sd8388521;   // 1  27'b11110000001011010000111101
@@ -1091,62 +1296,185 @@ assign end_y[26:0] = -27'sd8388367;  //-1
 //assign the output of the timer
 assign out_timer = out_timer_reg;
 
+// zoom in/ zoom out
+// wire signed [26:0] cr_start;
+// wire signed [26:0] ci_start;
+
+//store for the steps
+//wire [26:0] step;
+reg [26:0] step;
+reg [26:0] c;
+reg done_initial;
+//wire [26:0] dx_incre_mid;
+wire [26:0] dx_incre;
+
+// unsigned_mult get_step (.out(step),
+// 						.a(dx),
+// 						.b(NUM)
+// 						);
+
+always@(posedge clk)begin
+	if(rst) begin
+		step 		 <= dx;
+		c 	  		 <= 0;
+		done_initial <= 0;
+	end else begin
+		if(c != NUM) begin
+			step <= step + dx;
+			c    <= c + 27'b0001_000_0000_0000_0000_0000_0000;
+		end else begin
+			done_initial <= 1;
+			step <= step;
+		end
+	end
+end
+
+// unsigned_mult get_dx_incre (.out(dx_incre),
+// 							.a(dx),
+// 							.b(NUM_iterators)
+// 							);
+
+//calculating the increment for 16 iterators
+assign dx_incre = dx + dx + dx + dx + dx + dx + dx + dx + dx + dx + dx + dx + dx + dx + dx + dx ;
+
+
 //-----------------fisrt Iterator--------------------------------------------------------------// 
+	
 	always@(posedge clk) begin
 		state_ite <= next_state_ite;
 		if(rst)begin
-			cr_inter_temp <= sw ? 27'b0 : (-27'sd16777216 + (dx * NUM)); // -2
-			ci_inter_temp <= sw ? 27'b0 : 27'sd8388608;  // 1
+			// cr_inter_temp <= sw ? 27'b0 : (-27'sd16777216 + (dx * NUM)); // -2
+			// ci_inter_temp <= sw ? 27'b0 : 27'sd8388608;  // 1
+			cr_inter_temp <= cr_start + step; // -2
+			ci_inter_temp <= ci_start; 
 			x_coord <= 10'd_0 ;
 			y_coord <= 10'd_0 ;
 			out_timer_reg <= 10'd0;
-			state_ite <= STATE0;
+			write_data <= 0;
+			write_address <= 0;
+			state_ite <= INI;
 		end
 		else begin
 			case(state_ite)
+				INI:begin
+					next_state_ite <= done_initial ? STATE0 : INI;
+				end
 				STATE0: begin
-					out_timer_reg <= out_timer_reg + 1;
-					cr_inter_temp <= -27'sd16777216  + (dx * NUM); // -2 7000000
-					ci_inter_temp <=  27'sd8388608; // 1  8000000
+					out_timer_reg <= out_timer_reg + 3;
+					//cr_inter_temp <= -27'sd16777216  + (dx * NUM); // -2 7000000
+					//ci_inter_temp <=  27'sd8388608; // 1  8000000
+					cr_inter_temp <= cr_start + step; // -2
+					ci_inter_temp <= ci_start;
+					write_address <= (19'd_39 * y_coord) + x_coord ;
 					next_state_ite <= done_ite ? STATE1 : STATE0;
 				end
+				
+				// RIGHT: begin
+				// 	out_timer_reg <= out_timer_reg + 1;
+				// 	cr_inter_temp <=-27'sd16777216 + 100*dx;
+				// 	ci_inter_temp <= 27'sd8388608;
+				// 	write_address <= (19'd_160 * y_coord) + x_coord ;
+				// 	next_state_ite <= done_ite ? STATE1 : RIGHT;
+
+				// end
+
+				// LEFT: begin
+				// 	out_timer_reg <= out_timer_reg + 1;
+				// 	cr_inter_temp <=-27'sd16777216 - 100*dx;
+				// 	ci_inter_temp <= 27'sd8388608;
+				// 	write_address <= (19'd_160 * y_coord) + x_coord ;
+				// 	next_state_ite <= done_ite ? STATE1 : LEFT;
+				// end
+
 				STATE1: begin
-					out_timer_reg <= out_timer_reg + 1;
-					if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
-						cr_inter_temp <= cr_inter_temp + dx + dx;
-						ci_inter_temp <= ci_inter_temp ;
-						x_coord <= (x_coord==10'd_319)?10'd_0:(x_coord + 10'd_1) ;
-						write_data <= color_reg ;
-						next_state_ite <= STATE1;
-					end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
-						if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
-					 		next_state_ite <= STATE2;
-						end else begin
-							cr_inter_temp <= -27'sd16777216;
-							x_coord <= 10'd0;
-							ci_inter_temp <= ci_inter_temp - dy;
-							y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
+					// out_timer_reg <= out_timer_reg + 1;
+					// if((cr_inter_temp < end_x) && done_ite == 1'b1) begin
+					// 	cr_inter_temp <= cr_inter_temp + dx + dx;
+					// 	ci_inter_temp <= ci_inter_temp ;
+					// 	x_coord <= (x_coord==10'd_319)?10'd_0:(x_coord + 10'd_1) ;
+					// 	write_data <= color_reg ;
+					// 	next_state_ite <= STATE1;
+					//  end else if((cr_inter_temp >=  end_x) && done_ite == 1 ) begin
+					// 	if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
+					//  		next_state_ite <= STATE2;
+					// 	end else begin
+					// 		cr_inter_temp <= cr_start;
+					// 		x_coord <= 10'd0;
+					// 		ci_inter_temp <= ci_inter_temp - dy;
+					// 		y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
+					// 		write_data <= color_reg ;
+					// 		next_state_ite <= STATE1;
+					// 	end
+					// end else begin
+					// 	cr_inter_temp <= cr_inter_temp ;
+					// 	ci_inter_temp <= ci_inter_temp ;
+					// 	x_coord <= x_coord;
+					// 	y_coord <= y_coord;
+					// 	write_data <= write_data ;
+					// 	next_state_ite <= STATE1;
+					// end
+					// write_address <= (19'd_320 * y_coord) + x_coord ;
+					out_timer_reg <= out_timer_reg + 2;
+					if(done_ite)begin
+					//////	if(cr_inter_temp < end_x) begin
+						if(x_coord < 10'd_40)begin
+							cr_inter_temp <= cr_inter_temp + dx_incre;
+							ci_inter_temp <= ci_inter_temp ;
+					//////		x_coord <= (x_coord==10'd_159)?10'd_0:(x_coord + 10'd_1) ;
+							x_coord <= x_coord + 10'd_1 ;
 							write_data <= color_reg ;
 							next_state_ite <= STATE1;
+					//////	end else if(cr_inter_temp >=  end_x) begin
+						end else begin
+					//	end else begin
+							if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
+								next_state_ite <= STATE2;
+							end else begin
+								cr_inter_temp <= cr_start + step;
+								x_coord <= 10'd0;
+								ci_inter_temp <= ci_inter_temp - dy;
+								y_coord <= (y_coord==10'd_479)?10'd_0:(y_coord+10'd_1) ;
+								write_data <= color_reg ;
+								next_state_ite <= STATE1;
+							end
 						end
 					end else begin
 						cr_inter_temp <= cr_inter_temp ;
 						ci_inter_temp <= ci_inter_temp ;
 						x_coord <= x_coord;
 						y_coord <= y_coord;
-					//	write_enable <= 1'b_0 ;
 						write_data <= write_data ;
 						next_state_ite <= STATE1;
 					end
-					write_address <= (19'd_320 * y_coord) + x_coord ;
+					write_address <= (19'd_40 * y_coord) + x_coord ;
 				end
 				STATE2:begin 
-					out_timer_reg <= out_timer_reg;
-					next_state_ite <= STATE2;
+					if(key_right)begin
+						out_timer_reg <= 10'd0;
+						x_coord <= 10'd_0 ;
+						y_coord <= 10'd_0 ;
+						write_data <= 0;
+						write_address <= 0;
+						next_state_ite <= RIGHT;
+					end else if(key_left)begin
+						out_timer_reg <= 10'd0;
+						x_coord <= 10'd_0 ;
+						y_coord <= 10'd_0 ;
+						write_data <= 0;
+						write_address <= 0;
+						next_state_ite <= LEFT;
+					end else begin
+						out_timer_reg <= out_timer_reg;
+						next_state_ite <= STATE2;
+					end
 				end
 				
 				
-				default: begin next_state_ite <= STATE0; end
+				default: begin 
+					next_state_ite <= INI;
+					cr_inter_temp <= cr_inter_temp; // -2
+					ci_inter_temp <= ci_inter_temp;
+				 end
 			endcase
 		end
 	end
@@ -1156,42 +1484,58 @@ mandelbrot_iterator interator_1 (.clk(clk),
 								 .Cr(cr_inter),
 								 .Ci(ci_inter),
 								 .iteration(iteration_num),
-								 .done(done_ite)
+								 .done(done_ite),
+								 .max_iter(max_iterations)
 								 );
 
 //--------------------LOOK-UP Table to convert iteration # to colors----------------------------//
 wire [9:0] counter;
 assign counter = iteration_num;
-parameter [9:0] max_iterations = 10'd999;
+//parameter [9:0] max_iterations = 10'd999;
+reg [11:0] max_iterations;
 reg [7:0] color_reg;
 
 always@(*)begin
+	case(max_iter_num)
+		3'b000: max_iterations <= 12'd999;
+	//	3'b001: max_iterations <= 12'd2048;
+	//	3'b010: max_iterations <= 12'd4095;
+		3'b011: max_iterations <= 12'd800;
+		3'b100: max_iterations <= 12'd600;
+		3'b101: max_iterations <= 12'd400;
+		3'b110: max_iterations <= 12'd200;
+		3'b111: max_iterations <= 12'd100;
+		default: max_iterations <= 12'd999; 
+	endcase
+end
 
-		if (counter >= 999) begin
+always@(*)begin
+
+		if (counter >= max_iterations) begin
 			color_reg <= 8'b_000_000_00 ; // black
 		end
-		else if (counter >= (max_iterations >>> 1)) begin //500
+		else if (counter >= (max_iterations >> 1)) begin //500
 			color_reg <= 8'b_011_001_00 ; // white
 		end
-		else if (counter >= (max_iterations >>> 2)) begin //250
+		else if (counter >= (max_iterations >> 2)) begin //250
 			color_reg <= 8'b_011_001_00 ;
 		end
-		else if (counter >= (max_iterations >>> 3)) begin //125
+		else if (counter >= (max_iterations >> 3)) begin //125
 			color_reg <= 8'b_101_010_01 ;
 		end
-		else if (counter >= (max_iterations >>> 4)) begin //62
+		else if (counter >= (max_iterations >> 4)) begin //62
 			color_reg <= 8'b_011_001_01 ;
 		end
-		else if (counter >= (max_iterations >>> 5)) begin //31
+		else if (counter >= (max_iterations >> 5)) begin //31
 			color_reg <= 8'b_001_001_01 ;
 		end
-		else if (counter >= (max_iterations >>> 6)) begin //15
+		else if (counter >= (max_iterations >> 6)) begin //15
 			color_reg <= 8'b_011_010_10 ;
 		end
-		else if (counter >= (max_iterations >>> 7)) begin //7
+		else if (counter >= (max_iterations >> 7)) begin //7
 			color_reg <= 8'b_010_100_10 ;
 		end
-		else if (counter >= (max_iterations >>> 8)) begin //3
+		else if (counter >= (max_iterations >> 8)) begin //3
 			color_reg <= 8'b_010_100_10 ;
 		end
 		else begin
@@ -1201,5 +1545,46 @@ always@(*)begin
 end
 //----------------------------------------------------------------------------------------------//
 
+
+
+
+endmodule
+
+module find_max(
+    input [31:0] in0, in1, in2, in3, in4, in5, in6, in7,
+    input [31:0] in8, in9, in10, in11, in12, in13, in14, in15,
+    output [31:0] max_out
+    );
+
+    wire [31:0] max0, max1, max2, max3, max4, max5, max6, max7;
+    wire [31:0] max8, max9, max10, max11;
+    wire [31:0] max12, max13;
+    wire [31:0] max14;
+
+    // Level 1 comparisons
+    assign max0 = (in0 > in1) ? in0 : in1;
+    assign max1 = (in2 > in3) ? in2 : in3;
+    assign max2 = (in4 > in5) ? in4 : in5;
+    assign max3 = (in6 > in7) ? in6 : in7;
+    assign max4 = (in8 > in9) ? in8 : in9;
+    assign max5 = (in10 > in11) ? in10 : in11;
+    assign max6 = (in12 > in13) ? in12 : in13;
+    assign max7 = (in14 > in15) ? in14 : in15;
+
+    // Level 2 comparisons
+    assign max8 = (max0 > max1) ? max0 : max1;
+    assign max9 = (max2 > max3) ? max2 : max3;
+    assign max10 = (max4 > max5) ? max4 : max5;
+    assign max11 = (max6 > max7) ? max6 : max7;
+
+    // Level 3 comparisons
+    assign max12 = (max8 > max9) ? max8 : max9;
+    assign max13 = (max10 > max11) ? max10 : max11;
+
+    // Final comparison
+    assign max14 = (max12 > max13) ? max12 : max13;
+
+    // Output
+    assign max_out = max14;
 
 endmodule
