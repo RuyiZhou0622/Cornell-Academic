@@ -96,10 +96,10 @@ int main(void)
     int usr_max = 1023;
 	
     //set the varibles to store x,y coordinates
-    float start_x = fix2float(*pio_start_x);
-    float start_y = fix2float(*pio_start_y);
-    float end_x   = fix2float(*pio_end_x);
-    float end_y   = fix2float(*pio_end_y);
+    float start_x = fix2float((*pio_start_x << 5) >> 5 );
+    float start_y = fix2float((*pio_start_y << 5) >> 5);
+    float end_x   = fix2float((*pio_end_x << 5) >> 5);
+    float end_y   = fix2float((*pio_end_y << 5) >> 5);
 	//-------------------- assign the max number of iterations values -------------------------------------------//
     while(1){
         printf("Please enter the max number of iterations from 1 - 1023:\n");
