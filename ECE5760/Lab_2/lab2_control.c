@@ -41,6 +41,8 @@
 #define START_Y               0x00000020
 #define END_X                 0x00000030
 #define END_Y                 0x00000040
+#define DX                    0x00000050
+#define DY                    0x00000060
 //------------------------------------------------------------//
 
 // the light weight buss base
@@ -66,6 +68,8 @@ volatile signed int   *pio_start_x = NULL;
 volatile signed int   *pio_start_y = NULL;
 volatile signed int   *pio_end_x   = NULL;
 volatile signed int   *pio_end_y   = NULL;
+volatile signed int   *pio_dx   = NULL;
+volatile signed int   *pio_dy   = NULL;
 
 int main(void)
 {
@@ -91,15 +95,28 @@ int main(void)
     pio_start_y = (int *)(h2p_lw_virtual_base + START_Y);
     pio_end_x = (int *)(h2p_lw_virtual_base + END_X);
     pio_end_y = (int *)(h2p_lw_virtual_base + END_Y);
+    pio_dx = (int *)(h2p_lw_virtual_base + DX);
+    pio_dy = (int *)(h2p_lw_virtual_base + DY);
 
     //assign the default value of the maximum iterations
     int usr_max = 1023;
-	
+	*pio_max_ite = usr_max;
+    
     //set the varibles to store x,y coordinates
-    float start_x = fix2float((*pio_start_x << 5) >> 5 );
-    float start_y = fix2float((*pio_start_y << 5) >> 5);
-    float end_x   = fix2float((*pio_end_x << 5) >> 5);
-    float end_y   = fix2float((*pio_end_y << 5) >> 5);
+    float start_x = float2fix(-2.0);
+    float start_y = float2fix(1.0);
+    float end_x   = float2fix(1.0);
+    float end_y   = float2fix(-1.0);
+    float dx      = float2fix(3/640.0);
+    float dy      = float2fix(2/480.0);
+
+    *pio_start_x = start_x;
+    *pio_start_y = start_y;
+    *pio_end_x   = end_x;
+    *pio_end_y   = end_y;
+    *pio_dx      = dx;
+    *pio_dy      = dy;
+      printf("DONE_1!\n");
 	//-------------------- assign the max number of iterations values -------------------------------------------//
     while(1){
         printf("Please enter the max number of iterations from 1 - 1023:\n");
@@ -109,11 +126,12 @@ int main(void)
             scanf("%d", &usr_max);
         }
             *pio_max_ite = usr_max;
-            printf("DONE!\n");
-        printf("The X-range is [%f, %f]\n",start_x, end_x);
-        printf("The Y-range is [%f, %f]\n",start_y, end_y);
+            printf("DONE_2!\n");
+ 
+
        
     }
+    
 	return 0;
 
 } // end main
