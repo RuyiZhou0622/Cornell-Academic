@@ -512,7 +512,8 @@ wire [31:0] timer_count;
 								.dy(dy),
 								.key_left(~KEY[3]),
 								.key_right(~KEY[2]),
-								.usr_max(usr_max)
+								.usr_max(usr_max),
+								.restart(restart)
 							);
         end
     endgenerate
@@ -552,6 +553,7 @@ find_max max_timer(.in0(out_timer[0]),
 //=======================================================
 // From Qsys
 wire [9:0] usr_max;
+wire restart;
 Computer_System The_System (
 	////////////////////////////////////
 	// FPGA Side
@@ -576,7 +578,9 @@ Computer_System The_System (
 	.pio_end_x_external_connection_export (), 
 	.pio_end_y_external_connection_export (), 
 	.pio_dx_external_connection_export (dx),           //           pio_dx_external_connection.export
-	.pio_dy_external_connection_export (dy),    
+	.pio_dy_external_connection_export (dy),  
+	.pio_reset_external_connection_export (~KEY[0]),        //        pio_reset_external_connection.export
+	.pio_restart_external_connection_export (restart),   
 	// DDR3 SDRAM
 	.memory_mem_a			(HPS_DDR3_ADDR),
 	.memory_mem_ba			(HPS_DDR3_BA),
@@ -1081,13 +1085,15 @@ module fsm_and_iterator #(parameter NUM = 0)  (
 	dy,
 	key_left,
 	key_right,
-	usr_max
+	usr_max,
+	restart
 );
 
 input clk;
 input rst;
 input key_left;
-input key_right;																						
+input key_right;
+input restart;																						
 
 output done_ite_top;
 output [18:0] write_address_top;
@@ -1167,7 +1173,7 @@ end
 
 //calculating the increment for 16 iterators
 assign dx_incre = dx << 4 ;
-//input restart
+
 //-----------------fisrt Iterator--------------------------------------------------------------// 
 	
 	always@(posedge clk) begin
@@ -1181,8 +1187,8 @@ assign dx_incre = dx << 4 ;
 			// write_data <= 0;
 			// write_address <= 0;
 			// state_ite <= INI;
-			cr_inter_temp <= cr_start + step; 
-			ci_inter_temp <= ci_start; 
+			cr_inter_temp <= 27'b1110_000_0000_0000_0000_0000_0000 + step; 
+			ci_inter_temp <= 27'b0001_000_0000_0000_0000_0000_0000; 
 			end_x <= 27'b0001_000_0000_0000_0000_0000_0000;  // 1
 			end_y <= 27'b1111_000_0000_0000_0000_0000_0000;  // -1
 			x_coord <= 10'd_0 ;
@@ -1210,7 +1216,7 @@ assign dx_incre = dx << 4 ;
 					next_state_ite <= done_initial ? STATE0 : INI;
 				end
 				STATE0: begin
-					out_timer_reg <= out_timer_reg + 3;
+					out_timer_reg <= out_timer_reg + 1;
 					cr_inter_temp <= cr_start + step;
 					ci_inter_temp <= ci_start;
 					write_address <= (19'd_39 * y_coord) + x_coord ;
@@ -1220,16 +1226,18 @@ assign dx_incre = dx << 4 ;
 					next_state_ite <= done_initial ? STATE0_2 : INI_2;
 				end
 				STATE0_2: begin
-					out_timer_reg <= out_timer_reg + 3;
+					out_timer_reg <= out_timer_reg + 1;
 					cr_inter_temp <= 27'b1110_000_0000_0000_0000_0000_0000 + step; // -2
 					ci_inter_temp <= 27'b0001_000_0000_0000_0000_0000_0000;        // -1
+					end_x <= 27'b0001_000_0000_0000_0000_0000_0000;  // 1
+					end_y <= 27'b1111_000_0000_0000_0000_0000_0000;  // -1
 					write_address <= (19'd_39 * y_coord) + x_coord ;
 					next_state_ite <= done_ite ? STATE1 : STATE0_2;
 				end
 				
 
 				STATE1: begin
-					out_timer_reg <= out_timer_reg + 2;
+					out_timer_reg <= out_timer_reg + 1;
 					if(done_ite)begin
 					//////	if(cr_inter_temp < end_x) begin
 						if(x_coord < 10'd_40)begin
