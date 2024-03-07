@@ -43,6 +43,8 @@
 #define END_Y                 0x00000040
 #define DX                    0x00000050
 #define DY                    0x00000060
+#define RESTART               0x00000070
+#define RESET                 0x00000080  //this is input from FPGA to HPS
 //------------------------------------------------------------//
 
 // the light weight buss base
@@ -68,8 +70,10 @@ volatile signed int   *pio_start_x = NULL;
 volatile signed int   *pio_start_y = NULL;
 volatile signed int   *pio_end_x   = NULL;
 volatile signed int   *pio_end_y   = NULL;
-volatile signed int   *pio_dx   = NULL;
-volatile signed int   *pio_dy   = NULL;
+volatile signed int   *pio_dx      = NULL;
+volatile signed int   *pio_dy      = NULL;
+volatile unsigned int *pio_restart = NULL;
+volatile unsigned int *pio_reset   = NULL;
 
 int main(void)
 {
@@ -93,14 +97,18 @@ int main(void)
     pio_max_ite = (int *)(h2p_lw_virtual_base + PIO_MAX_ITER);
     pio_start_x = (int *)(h2p_lw_virtual_base + START_X);
     pio_start_y = (int *)(h2p_lw_virtual_base + START_Y);
-    pio_end_x = (int *)(h2p_lw_virtual_base + END_X);
-    pio_end_y = (int *)(h2p_lw_virtual_base + END_Y);
-    pio_dx = (int *)(h2p_lw_virtual_base + DX);
-    pio_dy = (int *)(h2p_lw_virtual_base + DY);
+    pio_end_x   = (int *)(h2p_lw_virtual_base + END_X);
+    pio_end_y   = (int *)(h2p_lw_virtual_base + END_Y);
+    pio_dx      = (int *)(h2p_lw_virtual_base + DX);
+    pio_dy      = (int *)(h2p_lw_virtual_base + DY);
+    pio_restart = (int *)(h2p_lw_virtual_base + RESTART);
+    pio_reset   = (int *)(h2p_lw_virtual_base + RESET);
 
     //assign the default value of the maximum iterations
     int usr_max = 1023;
+    int restart = 0;
 	*pio_max_ite = usr_max;
+    *pio_restart = restart;
     
     //set the varibles to store x,y coordinates
     float start_x = float2fix(-2.0);
@@ -116,19 +124,165 @@ int main(void)
     *pio_end_y   = end_y;
     *pio_dx      = dx;
     *pio_dy      = dy;
-      printf("DONE_1!\n");
-	//-------------------- assign the max number of iterations values -------------------------------------------//
-    while(1){
-        printf("Please enter the max number of iterations from 1 - 1023:\n");
-        scanf("%d", &usr_max);
+    
+
+    //set up the maximum iteration number
+    printf("Please enter the max number of iterations from 1 - 1023:\n");
+    scanf("%d", &usr_max);
         while(usr_max < 1 || usr_max > 1023){
             printf("Outside range, please input again:\n");
             scanf("%d", &usr_max);
         }
             *pio_max_ite = usr_max;
-            printf("DONE_2!\n");
- 
+    printf("SET MAX ITERATION NUM!\n");
 
+    printf("DONE_INITIALIZATION!\n");
+  
+	//-------------------- assign the max number of iterations values -------------------------------------------//
+    char zp;
+    float input_start_x = -2.0;
+    float input_start_y = 1.0;
+    float input_end_x   = 1.0;
+    float input_end_y   = -1.0;
+    float input_dx      = 3/640.0;
+    float input_dy      = 2/480.0;
+    float input_restart = 0;
+    printf("The X-range is [%f, %f]\n",input_start_x, input_end_x);
+    printf("The Y-range is [%f, %f]\n",input_start_y, input_end_y);
+
+    while(1){
+        if(*pio_reset == 1){
+            *pio_start_x = start_x;
+            *pio_start_y = start_y;
+            *pio_end_x   = end_x;
+            *pio_end_y   = end_y;
+            *pio_dx      = dx;
+            *pio_dy      = dy;
+        }else{
+            printf("Panning using 'W' 'S' 'A' 'D' keys, zooming using 'N' 'M' keys.\n");
+            scanf("%c",&zp);
+            //detect the panning buttons
+            if(zp == 'w'){
+                input_start_x = input_start_x;
+                input_start_y = input_start_y + 0.2;
+                input_dx      = input_dx;
+                input_dy      = input_dy;
+                start_x = float2fix(input_start_x);
+                start_y = float2fix(input_start_y);
+                dx      = float2fix(input_dx);
+                dy      = float2fix(input_dy);
+                *pio_start_x = start_x;
+                *pio_start_y = start_y;
+                *pio_dx      = dx;
+                *pio_dy      = dy;
+                *pio_restart = 1;
+                usleep(7000);
+                *pio_restart = 0;
+                printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
+                printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
+
+            }else if(zp == 's'){
+                input_start_x = input_start_x;
+                input_start_y = input_start_y - 0.2;
+                input_dx      = input_dx;
+                input_dy      = input_dy;
+                start_x = float2fix(input_start_x);
+                start_y = float2fix(input_start_y);
+                dx      = float2fix(input_dx);
+                dy      = float2fix(input_dy);
+                *pio_start_x = start_x;
+                *pio_start_y = start_y;
+                *pio_dx      = dx;
+                *pio_dy      = dy;
+                *pio_restart = 1;
+                usleep(7000);
+                *pio_restart = 0;
+                printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
+                printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
+
+                
+            }else if(zp == 'a'){
+                input_start_x = input_start_x - 0.3;
+                input_start_y = input_start_y;
+                input_dx      = input_dx;
+                input_dy      = input_dy;
+                start_x = float2fix(input_start_x);
+                start_y = float2fix(input_start_y);
+                dx      = float2fix(input_dx);
+                dy      = float2fix(input_dy);
+                *pio_start_x = start_x;
+                *pio_start_y = start_y;
+                *pio_dx      = dx;
+                *pio_dy      = dy;
+                *pio_restart = 1;
+                usleep(7000);
+                *pio_restart = 0;
+                printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
+                printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
+
+
+            }else if(zp == 'd'){
+                input_start_x = input_start_x + 0.3;
+                input_start_y = input_start_y;
+                input_dx      = input_dx;
+                input_dy      = input_dy;
+                start_x = float2fix(input_start_x);
+                start_y = float2fix(input_start_y);
+                dx      = float2fix(input_dx);
+                dy      = float2fix(input_dy);
+                *pio_start_x = start_x;
+                *pio_start_y = start_y;
+                *pio_dx      = dx;
+                *pio_dy      = dy;
+                *pio_restart = 1;
+                usleep(7000);
+                *pio_restart = 0;
+                printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
+                printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
+
+            }else if(zp == 'n'){
+                input_start_x = input_start_x;
+                input_start_y = input_start_y;
+                input_dx      = input_dx * 1.2;
+                input_dy      = input_dy * 1.2;
+                start_x = float2fix(input_start_x);
+                start_y = float2fix(input_start_y);
+                dx      = float2fix(input_dx);
+                dy      = float2fix(input_dy);
+                *pio_start_x = start_x;
+                *pio_start_y = start_y;
+                *pio_dx      = dx;
+                *pio_dy      = dy;
+                *pio_restart = 1;
+                usleep(7000);
+                *pio_restart = 0;
+                printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
+                printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
+            }
+            else if(zp == 'm'){
+                input_start_x = input_start_x;
+                input_start_y = input_start_y;
+                input_dx      = input_dx / 1.2;
+                input_dy      = input_dy / 1.2;
+                start_x = float2fix(input_start_x);
+                start_y = float2fix(input_start_y);
+                dx      = float2fix(input_dx);
+                dy      = float2fix(input_dy);
+                *pio_start_x = start_x;
+                *pio_start_y = start_y;
+                *pio_dx      = dx;
+                *pio_dy      = dy;
+                *pio_restart = 1;
+                usleep(7000);
+                *pio_restart = 0;
+                printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
+                printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
+            }
+            else{
+                printf("NOT a valid input, please try again.\n");
+            }
+            
+        }
        
     }
     
