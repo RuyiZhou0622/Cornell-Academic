@@ -161,6 +161,7 @@ int main(void)
         }else{
             printf("Panning using 'W' 'S' 'A' 'D' keys, zooming using 'N' 'M' keys.\n");
             scanf("%c",&zp);
+           // printf("%c, %c\n", zp, 'w');
             //detect the panning buttons
             if(zp == 'w'){
                 input_start_x = input_start_x;
@@ -258,8 +259,7 @@ int main(void)
                 *pio_restart = 0;
                 printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
                 printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
-            }
-            else if(zp == 'm'){
+            }else if(zp == 'm'){
                 input_start_x = input_start_x;
                 input_start_y = input_start_y;
                 input_dx      = input_dx / 1.2;
@@ -277,9 +277,25 @@ int main(void)
                 *pio_restart = 0;
                 printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
                 printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
-            }
-            else{
-                printf("NOT a valid input, please try again.\n");
+            }else{
+                //refresh the current state
+                input_start_x = input_start_x;
+                input_start_y = input_start_y;
+                input_dx      = input_dx;
+                input_dy      = input_dy;
+                start_x = float2fix(input_start_x);
+                start_y = float2fix(input_start_y);
+                dx      = float2fix(input_dx);
+                dy      = float2fix(input_dy);
+                *pio_start_x = start_x;
+                *pio_start_y = start_y;
+                *pio_dx      = dx;
+                *pio_dy      = dy;
+                *pio_restart = 1;
+                usleep(7000);
+                *pio_restart = 0;
+                printf("The X-range is [%f, %f]\n",input_start_x, input_start_x + 3.0);
+                printf("The Y-range is [%f, %f]\n",input_start_y, input_start_y - 2.0);
             }
             
         }
