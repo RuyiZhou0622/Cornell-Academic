@@ -124,7 +124,7 @@ float min(fix28 a, fix28 b){
 	return (a > b) ? b : a;
 }
 
-
+//-----------------------------------------------------------------------------------------------------
 
 int main(void)
 {
@@ -216,9 +216,10 @@ int main(void)
 				for (j=1; j<drum_size-1; j++){
 					// new_drum_temp = times_rho(drum_n[i-1][j] + drum_n[i+1][j] + drum_n[i][j-1] + drum_n[i][j+1] - times4pt0(drum_n[i][j]));
 					// new_drum[i][j] = times0pt9999(new_drum_temp + times2pt0(drum_n[i][j]) - times0pt9998(drum_n_1[i][j])) ;
+					/////////////////////////////////////////////////////////////////////////-------------------------------------------------------
 					new_drum[i][j] = multfix28 (    float2fix28(1.0/(1.0 + 0.0001)),multfix28(rho_eff,(drum_n[i + 1][j]) + drum_n[i-1][j] + drum_n[i][j + 1]+drum_n[i][j-1] - times4pt0 (drum_n[i][j]) )+ times2pt0(drum_n[i][j]) - multfix28(float2fix28(1-0.0001),drum_n_1[i][j])      ) ;
                     rho_eff = min (  float2fix28(0.49) , (rho + multfix28(   multfix28(float2fix28(1.0 / 16),new_drum[drum_middle][drum_middle])    ,  multfix28(float2fix28(1.0 / 16),new_drum[drum_middle][drum_middle])    ) )                );
-
+                                            ///////////////////////////////---------------------------------------------------------------------------
 				}
 			}
 			
