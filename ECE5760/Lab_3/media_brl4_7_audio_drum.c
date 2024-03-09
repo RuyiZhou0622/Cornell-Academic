@@ -95,15 +95,17 @@ typedef signed int fix28 ;
 
 // #define drum_size 100
 #define rho 0.25
-float rho_eff = 0.25;
+fix28 rho_eff = 0.25;
 #define Fs 48000
 #define LENGTH 100
 
 // float time_t[LENGTH];
-float u[LENGTH][LENGTH];
-float u1[LENGTH][LENGTH];
-float u2[LENGTH][LENGTH];
-float uHit[LENGTH][LENGTH];
+fix28 u[LENGTH][LENGTH];
+fix28 u1[LENGTH][LENGTH];
+fix28 u2[LENGTH][LENGTH];
+fix28 uHit[LENGTH][LENGTH];
+
+int t;
 
 // drum state variable arrays
 fix28 drum_n[drum_size][drum_size] ;
@@ -223,23 +225,23 @@ int main(void)
 	int p = 0, q = 0;
 	for (p = 0; p < LENGTH; p++){
 		for ( q = 0; q < LENGTH; q++) {
-			u[p][q] = (float)0.0;
-			u1[p][q] = (float)0.0;
-			u2[p][q] = (float)0.0;
-			uHit[p][q]= (float)0.0;
+			u[p][q] = 0.0;
+			u1[p][q] = 0.0;
+			u2[p][q] = 0.0;
+			uHit[p][q]= 0.0;
 		}
 		
 	}
-	int x_mid = (int)(drum_size/2);
-	int y_mid = (int)(drum_size/2);
+	int x_mid = drum_middle;
+	int y_mid = drum_middle;
 
 	int pi, pj;
-	for( pi = 0; pi < LENGTH; pi ++){
+	for( pi = 0; pi < LENGTH; pi++){
 		for ( pj = 0 ; pj < LENGTH; pj++){
 			if (pi == 0 || pj == 0 || pj == LENGTH-1 || pi == LENGTH-1) {
 				uHit[pi][pj] = 0;
 			} else {
-				uHit[pi][pj] = max((float) 0.0 , (float)  30-(abs(x_mid - pi) + abs(y_mid - pj)) ) /30;
+				uHit[pi][pj] = float2fix28(max(0.0 , 30-(abs(x_mid - pi) + abs(y_mid - pj)) ) /30);
 			}
 		}
 	}
@@ -263,17 +265,19 @@ int main(void)
 
 			// for t in time: python;
 			int time_i = 0;
-			for ( time_i = 0; time_i < LENGTH; time_i++){
+			printf("Inside FIFO, FIFO is not full\n");
 
-				// int pt = 0, qt = 0;
-				// for (pt = 0; pt < LENGTH; pt++){
-				// 	for ( qt = 0; qt < LENGTH; q++){
-				// 		u[pt][qt] = (float)0.0;
-				// 		u1[pt][qt] = (float)0.0;
-				// 		u2[pt][qt] = (float)0.0;
-				// 		uHit[pt][qt]= (float)0.0;
-				// 	}
-				// }
+			for ( time_i = 0; time_i < Fs; time_i++){
+				//printf("Inside Time, Time is not full\n");
+				int pt = 0, qt = 0;
+				for (pt = 0; pt < LENGTH; pt++){
+					for ( qt = 0; qt < LENGTH; qt++){
+						u[pt][qt] = 0.0;
+						// u1[pt][qt] = (float)0.0;
+						// u2[pt][qt] = (float)0.0;
+						// uHit[pt][qt]= (float)0.0;
+					}
+				}
 				int ii,ji;
 				if (time_i == 0){
 					for ( ii = 0; ii < LENGTH; ii++){
@@ -284,20 +288,21 @@ int main(void)
 				}
 		
 				int t, ti;
-				for( t = 1; t < LENGTH; t++ ){
-					for( ti = 1; ti < LENGTH; ti++){
-						u[t][ti] = (1.0/(1.0 + 0.0001)) * (rho_eff * (u1[t + 1][ti] + u1[t-1][ti] + u1[t][ti + 1]+u1[t][ti-1] - 4 * u1[t][ti] + 2 * u1[t][ti] - (1-0.0001) * u2[t][ti]));
-
+				for( t = 1; t < LENGTH-1; t++ ){
+					for( ti = 1; ti < LENGTH-1; ti++){
+						u[t][ti] = float2fix28((1.0/(1.0 + 0.0001)) * (rho_eff * (u1[t + 1][ti] + u1[t-1][ti] + u1[t][ti + 1]+u1[t][ti-1] - times4pt0 (u1[t][ti]) + times2pt0(u1[t][ti]) - (1-0.0001) * u2[t][ti])) );
+						printf("result of u[%d][%d], %f \n",t,ti,u[t][ti]);
 					}
 				}
 
 
 				memcpy((void*)u2, (void*)u1, copy_size);
 				memcpy((void*)u1, (void*)u, copy_size);
-				
+				//printf("First data, %f \n", u[drum_middle][drum_middle]);
 				// send time sample to the audio FiFOs
 				*audio_left_data_ptr = fix2audio16((int)u[drum_middle][drum_middle]);
 				*audio_right_data_ptr = fix2audio16((int)u[drum_middle][drum_middle]);
+				printf("Inside FIFO, FIFO is not full\n");
 
 				rho_eff = min ((float)0.49, (float) (rho + ((1.0 / 16) * u[drum_middle][drum_middle]) * ((1.0 / 16) * u[drum_middle][drum_middle])) );
 				
@@ -320,22 +325,22 @@ int main(void)
 			//*shared_ptr = audio_time/48000 ;
 		} // end while (((*audio	
 		
-		// if (clock()- note_time > 3000000) {
-		// 	// strike the drum
-		// 	// this is a set up for zerro initial displacment with
-		// 	// the strike as a velocity
-		// 	for (i=1; i<drum_size-1; i++){
-		// 		for (j=1; j<drum_size-1; j++){
-		// 			dist2 = (i-drum_middle)*(i-drum_middle)+(j-drum_middle)*(j-drum_middle);
-		// 			drum_n_1[i][j] = float2fix28(0.01*exp(-(float)dist2/alpha));
-		// 			drum_n[i][j] = 0 ;
-		// 		}
-		// 	}
+		if (clock()- note_time > 3000000) {
+			// strike the drum
+			// this is a set up for zerro initial displacment with
+			// the strike as a velocity
+			for (i=1; i<drum_size-1; i++){
+				for (j=1; j<drum_size-1; j++){
+					dist2 = (i-drum_middle)*(i-drum_middle)+(j-drum_middle)*(j-drum_middle);
+					u2[i][j] = float2fix28(0.01*exp(-(float)dist2/alpha));
+					u[i][j] = 0 ;
+				}
+			}
 			
-			// read LINUX time for the next drum strike
-		//	note_time = clock();
+			//read LINUX time for the next drum strike
+			note_time = clock();
 			
-		//};
+		};
 
 	} // end while(1)
 } // end main
