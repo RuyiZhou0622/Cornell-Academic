@@ -94,10 +94,10 @@ typedef signed int fix28 ;
 //-------------------------------initializize drum----------------------------//
 
 // #define drum_size 100
-#define rho 0.25
-fix28 rho_eff = 0.25;
+#define rho  float2fix28(0.25)
 #define Fs 48000
 #define LENGTH 100
+
 
 // float time_t[LENGTH];
 fix28 u[LENGTH][LENGTH];
@@ -142,6 +142,7 @@ float alpha = 64;
  
 int main(void)
 {
+	fix28 rho_eff = float2fix28(0.25);
 	// Declare volatile pointers to I/O registers (volatile 	// means that IO load and store instructions will be used 	// to access these pointer locations, 
 	// instead of regular memory loads and stores) 
 
@@ -232,8 +233,8 @@ int main(void)
 		}
 		
 	}
-	int x_mid = drum_middle;
-	int y_mid = drum_middle;
+	float x_mid = (float)drum_middle;
+	float y_mid = (float) drum_middle;
 
 	int pi, pj;
 	for( pi = 0; pi < LENGTH; pi++){
@@ -241,8 +242,9 @@ int main(void)
 			if (pi == 0 || pj == 0 || pj == LENGTH-1 || pi == LENGTH-1) {
 				uHit[pi][pj] = 0;
 			} else {
-				uHit[pi][pj] = float2fix28(max(0.0 , 30-(abs(x_mid - pi) + abs(y_mid - pj)) ) /30);
+				uHit[pi][pj] = multfix28 (float2fix28(max(0.0 , 30-(abs(x_mid - pi) + abs(y_mid - pj)) )), float2fix28 (1.0/30.0) );
 			}
+			printf("! result of uHit[%d][%d], %f \n",pi,pj, u[pi][pj]);
 		}
 	}
 	
@@ -265,7 +267,7 @@ int main(void)
 
 			// for t in time: python;
 			int time_i = 0;
-			printf("Inside FIFO, FIFO is not full\n");
+			// printf("Inside FIFO, FIFO is not full\n");
 
 			for ( time_i = 0; time_i < Fs; time_i++){
 				//printf("Inside Time, Time is not full\n");
@@ -273,6 +275,7 @@ int main(void)
 				for (pt = 0; pt < LENGTH; pt++){
 					for ( qt = 0; qt < LENGTH; qt++){
 						u[pt][qt] = 0.0;
+						// printf("!!!upper result of u[%d][%d], %d \n",pt,qt,u[pt][qt]);
 						// u1[pt][qt] = (float)0.0;
 						// u2[pt][qt] = (float)0.0;
 						// uHit[pt][qt]= (float)0.0;
@@ -290,8 +293,8 @@ int main(void)
 				int t, ti;
 				for( t = 1; t < LENGTH-1; t++ ){
 					for( ti = 1; ti < LENGTH-1; ti++){
-						u[t][ti] = float2fix28((1.0/(1.0 + 0.0001)) * (rho_eff * (u1[t + 1][ti] + u1[t-1][ti] + u1[t][ti + 1]+u1[t][ti-1] - times4pt0 (u1[t][ti]) + times2pt0(u1[t][ti]) - (1-0.0001) * u2[t][ti])) );
-						printf("result of u[%d][%d], %f \n",t,ti,u[t][ti]);
+						u[t][ti] = ((1.0/(1.0 + 0.0001)) * (rho_eff * (u1[t + 1][ti] + u1[t-1][ti] + u1[t][ti + 1]+u1[t][ti-1] - times4pt0 (u1[t][ti]) + times2pt0(u1[t][ti]) - (1-0.0001) * u2[t][ti])) );
+						// printf("result of u[%d][%d], %d \n",t,ti,u[t][ti]);
 					}
 				}
 
@@ -302,7 +305,7 @@ int main(void)
 				// send time sample to the audio FiFOs
 				*audio_left_data_ptr = fix2audio16((int)u[drum_middle][drum_middle]);
 				*audio_right_data_ptr = fix2audio16((int)u[drum_middle][drum_middle]);
-				printf("Inside FIFO, FIFO is not full\n");
+				// printf("Inside FIFO, FIFO is not full\n");
 
 				rho_eff = min ((float)0.49, (float) (rho + ((1.0 / 16) * u[drum_middle][drum_middle]) * ((1.0 / 16) * u[drum_middle][drum_middle])) );
 				
