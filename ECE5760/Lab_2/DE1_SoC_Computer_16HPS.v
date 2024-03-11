@@ -1193,23 +1193,6 @@ assign dx_incre = dx << 4 ;
 					next_state_ite <= done_ite ? STATE1 : STATE0;
 				end
 				
-				// RIGHT: begin
-				// 	out_timer_reg <= out_timer_reg + 1;
-				// 	cr_inter_temp <= cr_start + step + 100*dx;
-				// 	ci_inter_temp <= ci_start;
-				// 	write_address <= (19'd_39 * y_coord) + x_coord ;
-				// 	next_state_ite <= done_ite ? STATE1 : RIGHT;
-
-				// end
-
-				// LEFT: begin
-				// 	out_timer_reg <= out_timer_reg + 1;
-				// 	cr_inter_temp <=cr_start + step - 100*dx;
-				// 	ci_inter_temp <= ci_start;
-				// 	write_address <= (19'd_39 * y_coord) + x_coord ;
-				// 	next_state_ite <= done_ite ? STATE1 : LEFT;
-				// end
-
 				STATE1: begin
 					out_timer_reg <= out_timer_reg + 2;
 					if(done_ite)begin
