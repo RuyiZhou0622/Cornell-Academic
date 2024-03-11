@@ -1183,10 +1183,11 @@ assign dx_incre = dx << 4 ;
 		else begin
 			case(state_ite)
 				INI:begin
+					out_timer_reg <= out_timer_reg + 1;
 					next_state_ite <= done_initial ? STATE0 : INI;
 				end
 				STATE0: begin
-					out_timer_reg <= out_timer_reg + 3;
+					out_timer_reg <= out_timer_reg + 1;
 					cr_inter_temp <= cr_start + step; // -2
 					ci_inter_temp <= ci_start;
 					write_address <= (19'd_39 * y_coord) + x_coord ;
@@ -1194,7 +1195,7 @@ assign dx_incre = dx << 4 ;
 				end
 				
 				STATE1: begin
-					out_timer_reg <= out_timer_reg + 2;
+					out_timer_reg <= out_timer_reg + 1;
 					if(done_ite)begin
 					//////	if(cr_inter_temp < end_x) begin
 						if(x_coord < 10'd_40)begin
@@ -1230,24 +1231,10 @@ assign dx_incre = dx << 4 ;
 					write_address <= (19'd_40 * y_coord) + x_coord ;
 				end
 				STATE2:begin 
-					if(key_right)begin
-						out_timer_reg <= 10'd0;
-						x_coord <= 10'd_0 ;
-						y_coord <= 10'd_0 ;
-						write_data <= 0;
-						write_address <= 0;
-						next_state_ite <= RIGHT;
-					end else if(key_left)begin
-						out_timer_reg <= 10'd0;
-						x_coord <= 10'd_0 ;
-						y_coord <= 10'd_0 ;
-						write_data <= 0;
-						write_address <= 0;
-						next_state_ite <= LEFT;
-					end else begin
+					
 						out_timer_reg <= out_timer_reg;
 						next_state_ite <= STATE2;
-					end
+					
 				end
 				
 				
