@@ -4,20 +4,13 @@ module ComputeModule_tb;
 
 reg clk;
 reg rst;
-reg [17:0] u_n_ij, u_n_im1_j, u_n_ip1_j, u_n_ijm1, u_n_ijp1, u_nm1_ij;
-wire [17:0] u_np1_ij;
+reg signed  [17:0] u_n_ij, u_nm1_ij, u_n_im1_j, u_n_i_jm1, u_n_i_jp1, u_n_ip1_j;
+reg         [17:0] rho;
+wire signed [17:0] u_np1_ij;
 
 // Instantiate the ComputeModule
 ComputeModule uut (
-    .clk(clk),
-    .rst(rst),
-    .u_n_ij(u_n_ij), 
-    .u_n_im1_j(u_n_im1_j), 
-    .u_n_ip1_j(u_n_ip1_j), 
-    .u_n_ijm1(u_n_ijm1), 
-    .u_n_ijp1(u_n_ijp1), 
-    .u_nm1_ij(u_nm1_ij), 
-    .u_np1_ij(u_np1_ij)
+    .*
 );
 
 // Clock generation
@@ -30,29 +23,18 @@ end
 initial begin
     // Initialize inputs
     rst = 1;
-    
-
+    u_n_ij    = 18'b0_0_0100_0000_0000_0000;
+    u_nm1_ij  = 18'b0_0_0100_0000_0000_0000;
+    u_n_im1_j = 18'b0; 
+    u_n_i_jm1 = 18'b0; 
+    u_n_i_jp1 = 18'b0; 
+    u_n_ip1_j = 18'b0;
+    rho       = 18'b0_0_0010_0000_0000_0000;
     // Apply reset
-    #10;
+    #17;
     rst = 0; // Release reset
-    u_n_ij = 0;
-    u_n_im1_j = 0;
-    u_n_ip1_j = 0;
-    u_n_ijm1 = 0;
-    u_n_ijp1 = 0;
-    u_nm1_ij = 0;
-    // Update u_n_ij to be the same as u_np1_ij after the first clock cycle.
-    #10; // Wait for the first clock cycle to complete
-    forever begin
-        #10; // Wait for the clock period
-        u_n_ij = u_np1_ij; // Assign the output to the input for the next cycle
-        u_nm1_ij = u_n_ij; // Update previous state
-    end
-end
 
-// Optionally, monitor values
-initial begin
-    $monitor("Time = %t, u_np1_ij = %d", $time, u_np1_ij);
+  
 end
 
 endmodule
