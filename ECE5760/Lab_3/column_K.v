@@ -29,6 +29,7 @@ module fsm_ComputeModule(
     wire [17:0] out_un;
     reg [17:0] in_un_1;
     wire [17:0] out_un_1;
+    reg init;
     reg [17:0] out_un_reg, out_un_1_reg;
 
     M10K_1000_8 un   (.q(out_un), //output
@@ -82,9 +83,15 @@ module fsm_ComputeModule(
                     counter    <= counter + 1;
                     r_addr_un  <= 0;
                     r_addr_un_1<= 0;
+                    init = 1;
                     next_state <= (counter+3 >= 5'd30)? IDLE : MEM_INI;
+                    u_n_i_j <= u_n_bottom;
                 end
                 IDLE:begin
+
+                    w_addr_un  <= w_addr_un + 1;
+                    w_addr_un_1<= w_addr_un_1 + 1;
+
                     counter <= (counter == 5'd30) ? 5'd0 : counter + 1;
                     we_un     <= 0;
                     we_un_1    <= 0;
@@ -92,11 +99,18 @@ module fsm_ComputeModule(
                     u_nm1_ij   <= out_un_1;
                     if(counter == 1) begin
                         u_n_i_jm1 <= 0;
-                        u_n_i_j <= u_n_bottom;
+                        // u_n_i_j <= u_n_bottom;
                     end else begin
                         u_n_i_jm1 <= u_n_i_jm1_reg;
+                        // u_n_i_j <= u_n_i_j_reg;
+                    end
+
+                    if (init == 1)begin
+                        u_n_i_j <= u_n_bottom;
+                    end else begin
                         u_n_i_j <= u_n_i_j_reg;
                     end
+                    
                     if (counter == 5'd30) begin
                         u_n_i_jp1 <= 0;
                     end else begin
@@ -114,11 +128,12 @@ module fsm_ComputeModule(
                     
                     r_addr_un  <= r_addr_un + 1;
                     r_addr_un_1<= r_addr_un_1 + 1;
-                    in_un <= al_tmp3;
+                    in_un <= u_np1_ij;
                     in_un_1 <= u_n_i_jp1;
                     u_n_i_j_reg <= u_n_i_jp1;
                     u_n_i_jm1_reg <= u_n_i_j;
                     next_state <= IDLE;
+                    init = 0;
 
                 end
                 default:next_state <= MEM_INI;
