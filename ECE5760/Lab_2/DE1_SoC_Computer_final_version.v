@@ -510,8 +510,6 @@ wire [31:0] timer_count;
 								.ci_start(ci_start),
 								.dx(dx),
 								.dy(dy),
-								.key_left(~KEY[3]),
-								.key_right(~KEY[2]),
 								.usr_max(usr_max),
 								.restart(restart)
 							);
@@ -554,6 +552,7 @@ find_max max_timer(.in0(out_timer[0]),
 // From Qsys
 wire [9:0] usr_max;
 wire restart;
+wire [26:0] e_x, e_y;
 Computer_System The_System (
 	////////////////////////////////////
 	// FPGA Side
@@ -575,8 +574,8 @@ Computer_System The_System (
 	.pio_max_iter_num_external_connection_export (usr_max),
 	.pio_start_x_external_connection_export (cr_start), 
 	.pio_start_y_external_connection_export (ci_start), 
-	.pio_end_x_external_connection_export (), 
-	.pio_end_y_external_connection_export (), 
+	.pio_end_x_external_connection_export (e_x), 
+	.pio_end_y_external_connection_export (e_y), 
 	.pio_dx_external_connection_export (dx),           //           pio_dx_external_connection.export
 	.pio_dy_external_connection_export (dy),  
 	.pio_reset_external_connection_export (~KEY[0]),        //        pio_reset_external_connection.export
@@ -1083,16 +1082,12 @@ module fsm_and_iterator #(parameter NUM = 0)  (
 	ci_start,
 	dx,
 	dy,
-	key_left,
-	key_right,
 	usr_max,
 	restart
 );
 
 input clk;
 input rst;
-input key_left;
-input key_right;
 input restart;																						
 
 output done_ite_top;
@@ -1361,11 +1356,29 @@ end
 endmodule
 
 module find_max(
-    input [31:0] in0, in1, in2, in3, in4, in5, in6, in7,
-    input [31:0] in8, in9, in10, in11, in12, in13, in14, in15,
-    output [31:0] max_out
-    );
+   in0, 
+   in1, 
+   in2, 
+   in3, 
+   in4, 
+   in5, 
+   in6, 
+   in7,
+   in8, 
+   in9, 
+   in10, 
+   in11, 
+   in12, 
+   in13, 
+   in14, 
+   in15,
+   max_out
+);
 
+   input [31:0] in0, in1, in2, in3, in4, in5, in6, in7;
+   input [31:0] in8, in9, in10, in11, in12, in13, in14, in15;
+   output [31:0] max_out;
+	
     wire [31:0] max0, max1, max2, max3, max4, max5, max6, max7;
     wire [31:0] max8, max9, max10, max11;
     wire [31:0] max12, max13;
