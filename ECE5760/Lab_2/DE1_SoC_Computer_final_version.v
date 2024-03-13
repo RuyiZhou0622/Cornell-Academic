@@ -479,11 +479,6 @@ wire        done_ite_top [15:0];
 wire [31:0] out_timer [15:0];
 wire [31:0] timer_count;
 
-// assign dx = dx_temp;
-// assign dy = dy_temp;
-// assign cr_start = cr_start_temp;
-// assign ci_start = ci_start_temp;
-
 // Instantiate memories
 // Generate block to create 16 iterators and 16 memory blocks
     genvar i;
@@ -1135,8 +1130,7 @@ assign cr_inter = cr_inter_temp;
 assign ci_inter = ci_inter_temp;
 
 // assign the end coordiantes
-// assign end_x[26:0] =  27'sd8388521;   // 1  27'b11110000001011010000111101
-// assign end_y[26:0] = -27'sd8388367;  //-1
+
 assign end_x_w[26:0] = cr_start + 27'b0011_000_0000_0000_0000_0000_0000;
 assign end_y_w[26:0] = ci_start - 27'b0010_000_0000_0000_0000_0000_0000;
 
@@ -1174,14 +1168,7 @@ assign dx_incre = dx << 4 ;
 	always@(posedge clk) begin
 		state_ite <= next_state_ite;
 		if(rst)begin
-			// cr_inter_temp <= cr_start + step; // -2
-			// ci_inter_temp <= ci_start; 
-			// x_coord <= 10'd_0 ;
-			// y_coord <= 10'd_0 ;
-			// out_timer_reg <= 10'd0;
-			// write_data <= 0;
-			// write_address <= 0;
-			// state_ite <= INI;
+			
 			cr_inter_temp <= 27'b1110_000_0000_0000_0000_0000_0000 + step; 
 			ci_inter_temp <= 27'b0001_000_0000_0000_0000_0000_0000; 
 			end_x <= 27'b0001_000_0000_0000_0000_0000_0000;  // 1
@@ -1234,19 +1221,19 @@ assign dx_incre = dx << 4 ;
 				STATE1: begin
 					out_timer_reg <= out_timer_reg + 1;
 					if(done_ite)begin
-					//////	if(cr_inter_temp < end_x) begin
+					
 						if(x_coord < 10'd_40)begin
 							cr_inter_temp <= cr_inter_temp + dx_incre;
 							ci_inter_temp <= ci_inter_temp ;
-					//////		x_coord <= (x_coord==10'd_159)?10'd_0:(x_coord + 10'd_1) ;
+				
 							x_coord <= x_coord + 10'd_1 ;
 							write_data <= color_reg ;
 							next_state_ite <= STATE1;
-					//////	end else if(cr_inter_temp >=  end_x) begin
+			
 						end else begin
-					//	end else begin
+				
 							if((ci_inter_temp <= end_y) || (y_coord == 10'd_479)) begin
-						//	if( y_coord == 10'd_480) begin
+				
 								next_state_ite <= STATE2;
 							end else begin
 								cr_inter_temp <= cr_start + step;
@@ -1268,24 +1255,10 @@ assign dx_incre = dx << 4 ;
 					write_address <= (19'd_40 * y_coord) + x_coord ;
 				end
 				STATE2:begin 
-					// if(key_right)begin
-					// 	out_timer_reg <= 10'd0;
-					// 	x_coord <= 10'd_0 ;
-					// 	y_coord <= 10'd_0 ;
-					// 	write_data <= 0;
-					// 	write_address <= 0;
-					// 	next_state_ite <= RIGHT;
-					// end else if(key_left)begin
-					// 	out_timer_reg <= 10'd0;
-					// 	x_coord <= 10'd_0 ;
-					// 	y_coord <= 10'd_0 ;
-					// 	write_data <= 0;
-					// 	write_address <= 0;
-					// 	next_state_ite <= LEFT;
-					// end else begin
+					
 						out_timer_reg <= out_timer_reg;
 						next_state_ite <= STATE2;
-					// end
+					
 				end
 				
 				
