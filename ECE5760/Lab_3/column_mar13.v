@@ -30,7 +30,7 @@ module fsm_ComputeModule(
     reg [17:0] in_un_1;
     wire [17:0] out_un_1;
     reg init;
-    reg [17:0] out_un_reg, out_un_1_reg, u_nm1_ij, u_n_i_jp1;
+    reg signed [17:0] out_un_reg, out_un_1_reg, u_nm1_ij, u_n_i_jp1;
 
     wire signed  [17:0] tmp1, tmp3;
     wire signed [17:0] rho_tmp1;
