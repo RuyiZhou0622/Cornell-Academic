@@ -18,6 +18,17 @@ module column_simulation(
     wire signed [17:0] u_nm1_ij;
     wire signed [17:0] u_n_ijp1;
 
+    reg [5:0] row; //we only have one column right so we traverse the rows
+    reg signed [17:0] wt_data_u_n;
+    reg signed [17:0] wt_data_u_nm1;
+    reg signed [17:0] u_n_bot;
+    reg signed [17:0] u_n_ij;
+    reg signed [17:0] u_n_ijm1;
+    reg we_un;
+    reg we_unm1;
+    reg initial_read;
+
+
     assign u_n_ijp1 = (initial_read) ? initial_u_n_ijp1 : current_u_n_ijp1; //choose the initial traversal or others
     assign u_nm1_ij = (initial_read) ? initial_u_nm1_ij : current_u_nm1_ij; //choose the initial traversal or others
 
@@ -43,17 +54,17 @@ module column_simulation(
                       .clk(clk)
                       );
 
-    M10K_1000_8_ini init_un (.q(initial_u_n_ijp1),
-                         .d(1'b0),
-                         .write_address(1'b0),
+    M10K_1000_8 init_un (.q(initial_u_n_ijp1),
+                         .d(),
+                         .write_address(),
                          .read_address(rd_addr), //read the next one
                          .we(1'b0),  //do not write anything
                          .clk(clk)
                          );
 
-    M10K_1000_8_ini init_un_1 (.q(initial_u_nm1_ij),
-                           .d(1'b0),
-                           .write_address(1'b0),
+    M10K_1000_8 init_un_1 (.q(initial_u_nm1_ij),
+                           .d(),
+                           .write_address(),
                            .read_address(row), //read the current one
                            .we(1'b0), //do not write anything
                            .clk(clk)
@@ -66,7 +77,7 @@ module column_simulation(
 
     assign input_u_n_ij    [17:0] = (row == 18'b0) ? u_n_bot : u_n_ij;
     assign input_u_n_i_jm1 [17:0] = (row == 18'b0) ? 18'b0 : u_n_ijm1;
-    assign input_u_n_i_jp1 [17:0] = (row + 5'b1 == NUM_ROW) ? 18'b0 : u_n_ijp1;
+    assign input_u_n_i_jp1 [17:0] = (row + 6'b1 == NUM_ROW) ? 18'b0 : u_n_ijp1;
 
     ComputeModule_for_col compute_start (.u_n_ij(input_u_n_ij), 
                                          .u_nm1_ij(u_nm1_ij), 
@@ -80,26 +91,17 @@ module column_simulation(
 
     //implementation of the FSM
     parameter [2:0] INITIAL  = 3'b000;
-    parameter [2:0] WAIT   = 3'b001;
+    parameter [2:0] WAIT     = 3'b001;
     parameter [2:0] WRITE    = 3'b010;
     parameter [2:0] SHIFT    = 3'b011;
     parameter [2:0] TRAVERSE = 3'b100;
 
-    reg [5:0] row; //we only have one column right so we traverse the rows
-    reg signed [17:0] wt_data_u_n;
-    reg signed [17:0] wt_data_u_nm1;
-    reg signed [17:0] u_n_bot;
-    reg signed [17:0] u_n_ij;
-    reg signed [17:0] u_n_ijm1;
-    reg we_un;
-    reg we_unm1;
-    reg initial_read;
-
+    
     reg [2:0] state;
 
     always@(posedge clk)begin
         if(rst)begin
-            state <= 3'b000;
+            state <= INITIAL;
         end else begin
             case(state)
                 INITIAL:begin
@@ -113,11 +115,15 @@ module column_simulation(
                     we_un <= 0;
                     we_unm1 <= 0;
                     initial_read <= 1; 
+                    state <= WAIT;
+                end
+                WAIT:begin
+                    //waiting for the data read from the memory block
                     state <= WRITE;
                 end
                 WRITE:begin
                     //start writing to memory
-                    if(row == 5'b0)begin
+                    if(row == 6'b0)begin
                         //row 33
                         wt_data_u_nm1 <= u_n_bot;
                         u_n_ijm1 <= u_n_bot;
@@ -133,20 +139,21 @@ module column_simulation(
                         we_unm1 <= 1;
                         we_un <= 1;
                         u_n_bot <= u_n_bot;
+                
                     end
                     state <= SHIFT;
                 end
                 SHIFT:begin
-                    if( row + 5'b1 >= NUM_ROW)begin
+                    if( row + 6'b1 >= NUM_ROW)begin
                         //row 33
                       u_n_ij <= u_n_bot;
                       state <= TRAVERSE;
-                      row <= 5'b0;
+                      row <= 6'b0;
                     end else begin
                         //midlle rows
                         u_n_ij <= u_n_ijp1;
                         state <= WAIT;
-                        row <= row + 5'b1;
+                        row <= row + 6'b1;
                     end
                     we_un   <= 0;
                     we_unm1 <= 0;
@@ -244,28 +251,10 @@ module M10K_1000_8(
 
     reg signed [17:0] mem [32:0]; /* synthesis ramstyle = "no_rw_check, M10K" */
 
-    always @ (posedge clk) begin
-        if (we) begin
-            mem[write_address] <= d;
-		  end
-        q <= mem[read_address]; // q doesn't get d in this clock cycle
-    end
-endmodule
-
-
-module M10K_1000_8_ini( 
-    output reg signed [17:0] q,
-    input signed      [17:0] d,
-    input [5:0] write_address, read_address,
-    input we, clk
-);
-
-    reg signed [17:0] mem [32:0]; /* synthesis ramstyle = "no_rw_check, M10K" */
-
     initial begin
         $readmemb("initial_file.txt", mem);
     end
-	 
+
     always @ (posedge clk) begin
         if (we) begin
             mem[write_address] <= d;
