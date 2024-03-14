@@ -113,16 +113,12 @@ module column_simulation(
                     we_un <= 0;
                     we_unm1 <= 0;
                     initial_read <= 1; 
-                    state <= WAIT;
-                end
-                WAIT:begin
                     state <= WRITE;
                 end
-               
                 WRITE:begin
                     //start writing to memory
                     if(row == 5'b0)begin
-                        //row 0
+                        //row 33
                         wt_data_u_nm1 <= u_n_bot;
                         u_n_ijm1 <= u_n_bot;
                         u_n_bot <= u_np1_ij;
@@ -142,7 +138,7 @@ module column_simulation(
                 end
                 SHIFT:begin
                     if( row + 5'b1 >= NUM_ROW)begin
-                        //row 30
+                        //row 33
                       u_n_ij <= u_n_bot;
                       state <= TRAVERSE;
                       row <= 5'b0;
