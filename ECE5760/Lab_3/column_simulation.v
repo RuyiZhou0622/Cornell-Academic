@@ -261,4 +261,4 @@ module M10K_1000_8(
 		  end
         q <= mem[read_address]; // q doesn't get d in this clock cycle
     end
-endmodule
+endmodule 
