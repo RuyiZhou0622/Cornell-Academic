@@ -37,6 +37,8 @@ module column_simulation(
 
     //instantiation of the memory blocks
     wire[5:0] rd_addr;
+    reg ini_we_un;
+    reg ini_we_unm1;
     assign rd_addr = (row+1 == NUM_ROW) ? 5'b0 : row + 1;
     M10K_1000_8 un (.q(current_u_n_ijp1),
                     .d(wt_data_u_n),
@@ -55,18 +57,18 @@ module column_simulation(
                       );
 
     M10K_1000_8 init_un (.q(initial_u_n_ijp1),
-                         .d(),
-                         .write_address(),
+                         .d(wt_data_u_n),
+                         .write_address(row),
                          .read_address(rd_addr), //read the next one
-                         .we(1'b0),  //do not write anything
+                         .we(ini_we_un),  
                          .clk(clk)
                          );
 
     M10K_1000_8 init_un_1 (.q(initial_u_nm1_ij),
-                           .d(),
-                           .write_address(),
+                           .d(wt_data_u_nm1),
+                           .write_address(row),
                            .read_address(row), //read the current one
-                           .we(1'b0), //do not write anything
+                           .we(ini_we_unm1), 
                            .clk(clk)
                            );
 
@@ -90,20 +92,29 @@ module column_simulation(
                                          );
 
     //implementation of the FSM
-    parameter [2:0] INITIAL  = 3'b000;
-    parameter [2:0] WAIT     = 3'b001;
-    parameter [2:0] WRITE    = 3'b010;
-    parameter [2:0] SHIFT    = 3'b011;
-    parameter [2:0] TRAVERSE = 3'b100;
-
-    
+    parameter [2:0] INITIAL_MEM = 3'b000;
+    parameter [2:0] INITIAL     = 3'b001;
+    parameter [2:0] WAIT        = 3'b010;
+    parameter [2:0] WRITE       = 3'b011;
+    parameter [2:0] SHIFT       = 3'b100;
+    parameter [2:0] TRAVERSE    = 3'b101;
+  
     reg [2:0] state;
 
     always@(posedge clk)begin
         if(rst)begin
-            state <= INITIAL;
+            state <= INITIAL_MEM;
+            row <= 0;
+            ini_we_un <= 1;
+            ini_we_unm1 <= 1;
         end else begin
             case(state)
+                INITIAL_MEM:begin
+                    row <= (row == NUM_ROW - 1)? row : row + 1;
+                    ini_we_un <= (row == NUM_ROW - 1)? 0: 1;
+                    ini_we_unm1 <= (row == NUM_ROW - 1)? 0: 1;
+                    state <= (row == NUM_ROW - 1) ? INITIAL:INITIAL_MEM;
+                end
                 INITIAL:begin
                     //reset to the row 0
                     row <= 0;
@@ -167,6 +178,151 @@ module column_simulation(
             endcase
         end
     end
+
+    //Look-Up Table for the initialization of the memory blocks
+    always@(*)begin
+        case(row)
+            5'd0:begin
+                        wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
+                    end
+            5'd1:begin
+                        wt_data_u_n <= 18'b0_0_0000_0100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0000_0100_0000_0000;
+                    end
+            5'd2:begin
+                        wt_data_u_n <= 18'b0_0_0000_1000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0000_1000_0000_0000;
+                    end
+            5'd3:begin
+                        wt_data_u_n <= 18'b0_0_0000_1100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0000_1100_0000_0000;
+                    end
+            5'd4:begin
+                        wt_data_u_n <= 18'b0_0_0001_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0001_0000_0000_0000;
+                    end
+            5'd5:begin
+                        wt_data_u_n <= 18'b0_0_0001_0100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0001_0100_0000_0000;
+                    end
+            5'd6:begin
+                        wt_data_u_n <= 18'b0_0_0001_1000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0001_1000_0000_0000;
+                    end
+            5'd7:begin
+                        wt_data_u_n <= 18'b0_0_0001_1100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0001_1100_0000_0000;
+                    end
+            5'd8:begin
+                        wt_data_u_n <= 18'b0_0_0010_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0010_0000_0000_0000;
+                    end
+            5'd9:begin
+                        wt_data_u_n <= 18'b0_0_0010_0100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0010_0100_0000_0000;
+                    end
+            5'd10:begin
+                        wt_data_u_n <= 18'b0_0_0010_1000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0010_1000_0000_0000;
+                    end
+            5'd11:begin
+                        wt_data_u_n <= 18'b0_0_0010_1100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0010_1100_0000_0000;
+                    end
+            5'd12:begin
+                        wt_data_u_n <= 18'b0_0_0011_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0011_0000_0000_0000;
+                    end
+            5'd13:begin
+                        wt_data_u_n <= 18'b0_0_0011_0100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0011_0100_0000_0000;
+                    end
+            5'd14:begin
+                        wt_data_u_n <= 18'b0_0_0011_1000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0011_1000_0000_0000;
+                    end
+            5'd15:begin
+                        wt_data_u_n <= 18'b0_0_0011_1100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0011_1100_0000_0000;
+                    end
+            5'd16:begin
+                        wt_data_u_n <= 18'b0_0_0100_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0100_0000_0000_0000;
+                    end
+            5'd17:begin
+                        wt_data_u_n <= 18'b0_0_0011_1100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0011_1100_0000_0000;
+                    end
+            5'd18:begin
+                        wt_data_u_n <= 18'b0_0_0011_1000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0011_1000_0000_0000;
+                    end
+            5'd19:begin
+                        wt_data_u_n <= 18'b0_0_0011_0100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0011_0100_0000_0000;
+                    end
+            5'd20:begin
+                        wt_data_u_n <= 18'b0_0_0011_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0011_0000_0000_0000;
+                    end
+            5'd21:begin
+                        wt_data_u_n <= 18'b0_0_0010_1100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0010_1100_0000_0000;
+                    end
+            5'd22:begin
+                        wt_data_u_n <= 18'b0_0_0010_1000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0010_1000_0000_0000;
+                    end
+            5'd23:begin
+                        wt_data_u_n <= 18'b0_0_0010_0100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0010_0100_0000_0000;
+                    end
+            5'd24:begin
+                        wt_data_u_n <= 18'b0_0_0010_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0010_0000_0000_0000;
+                    end
+            5'd25:begin
+                        wt_data_u_n <= 18'b0_0_0001_1100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0001_1100_0000_0000;
+                    end
+            5'd26:begin
+                        wt_data_u_n <= 18'b0_0_0001_1000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0001_1000_0000_0000;
+                    end
+            5'd27:begin
+                        wt_data_u_n <= 18'b0_0_0001_0100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0001_0100_0000_0000;
+                    end
+            5'd28:begin
+                        wt_data_u_n <= 18'b0_0_0001_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0001_0000_0000_0000;
+                    end
+            5'd29:begin
+                        wt_data_u_n <= 18'b0_0_0000_1100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0000_1100_0000_0000;
+                    end
+            5'd30:begin
+                        wt_data_u_n <= 18'b0_0_0000_1000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0000_1000_0000_0000;
+                    end
+            5'd31:begin
+                        wt_data_u_n <= 18'b0_0_0000_0100_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0000_0100_0000_0000;
+                    end
+            5'd32:begin
+                        wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
+                        wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
+                    end
+    
+    
+            default:begin
+                wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
+                wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
+            end
+        endcase
+    end
+
 endmodule
 
 module ComputeModule_for_col(
@@ -251,14 +407,10 @@ module M10K_1000_8(
 
     reg signed [17:0] mem [32:0]; /* synthesis ramstyle = "no_rw_check, M10K" */
 
-    initial begin
-        $readmemb("initial_file.txt", mem);
-    end
-
     always @ (posedge clk) begin
         if (we) begin
             mem[write_address] <= d;
 		  end
         q <= mem[read_address]; // q doesn't get d in this clock cycle
     end
-endmodule 
+endmodule
