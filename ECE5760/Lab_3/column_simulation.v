@@ -1,19 +1,22 @@
 module column_simulation(
     clk,
     rst,
+
+     row_out,
+     wt_data_u_n_in,
+     wt_data_u_nm1_in,
     rho,
     u_np1_ij_out
 );
     input clk;
     input rst;
     input [17:0] rho;
+    output [4:0] row_out;
+    input signed [17:0] wt_data_u_n_in;
+    input signed [17:0] wt_data_u_nm1_in;
     output signed [17:0] u_np1_ij_out;
     parameter [5:0] NUM_ROW = 6'd33;
    
-    wire signed [17:0] current_u_n_ijp1;
-    wire signed [17:0] initial_u_n_ijp1;
-    wire signed [17:0] current_u_nm1_ij;
-    wire signed [17:0] initial_u_nm1_ij;
     wire signed [17:0] u_np1_ij;
     wire signed [17:0] u_nm1_ij;
     wire signed [17:0] u_n_ijp1;
@@ -21,12 +24,15 @@ module column_simulation(
     reg [5:0] row; //we only have one column right so we traverse the rows
     reg signed [17:0] wt_data_u_n;
     reg signed [17:0] wt_data_u_nm1;
+    reg signed [17:0] in_wt_data_u_n;
+    reg signed [17:0] in_wt_data_u_nm1;
     reg signed [17:0] u_n_bot;
     reg signed [17:0] u_n_ij;
     reg signed [17:0] u_n_ijm1;
     reg we_un;
     reg we_unm1;
 
+    assign row_out = row;
     //assign the output amplitude
     assign u_np1_ij_out = u_np1_ij;
 
@@ -38,6 +44,7 @@ module column_simulation(
     assign input_u_n_ij    [17:0] = (row == 18'b0)          ? u_n_bot : u_n_ij;
     assign input_u_n_i_jm1 [17:0] = (row == 18'b0)          ? 18'b0   : u_n_ijm1;
     assign input_u_n_i_jp1 [17:0] = (row + 6'b1 == NUM_ROW) ? 18'b0   : u_n_ijp1;
+    
 
     ComputeModule_for_col compute_start (.u_n_ij(input_u_n_ij), 
                                          .u_nm1_ij(u_nm1_ij), 
@@ -72,7 +79,7 @@ module column_simulation(
     assign input_we_unm1 = (state == INITIAL_MEM || rst == 1)?ini_we_unm1 : we_unm1;
 
     M10K_1000_8 un (.q(u_n_ijp1),
-                    .d(wt_data_u_n),
+                    .d(in_wt_data_u_n),
                     .write_address(row),
                     .read_address(rd_addr), //read the next one
                     .we(input_we_un),
@@ -80,7 +87,7 @@ module column_simulation(
                     );
 
     M10K_1000_8 un_1 (.q(u_nm1_ij),
-                      .d(wt_data_u_nm1),
+                      .d(in_wt_data_u_nm1),
                       .write_address(row),
                       .read_address(row), //read the current one
                       .we(input_we_unm1),
@@ -91,12 +98,16 @@ module column_simulation(
         if(rst)begin
             state <= INITIAL_MEM;
             row <= 0;
+            in_wt_data_u_n <= wt_data_u_n_in;
+            in_wt_data_u_nm1 <= wt_data_u_nm1_in;
             ini_we_un <= 1;
             ini_we_unm1 <= 1;
         end else begin
             case(state)
                 INITIAL_MEM:begin
                     row <= (row == NUM_ROW - 1)? row : row + 1;
+                    in_wt_data_u_n <= wt_data_u_n_in;
+                    in_wt_data_u_nm1 <= wt_data_u_nm1_in;
                     ini_we_un <= (row == NUM_ROW - 1)? 0: 1;
                     ini_we_unm1 <= (row == NUM_ROW - 1)? 0: 1;
                     state <= (row == NUM_ROW - 1) ? INITIAL:INITIAL_MEM;
@@ -104,8 +115,8 @@ module column_simulation(
                 INITIAL:begin
                     //reset to the row 0
                     row           <= 0;
-                    wt_data_u_n   <= 18'b0;
-                    wt_data_u_nm1 <= 18'b0;
+                    in_wt_data_u_n   <= 18'b0;
+                    in_wt_data_u_nm1 <= 18'b0;
                     u_n_bot       <= 18'b0;
                     u_n_ij        <= 18'b0;
                     u_n_ijm1      <= 18'b0;
@@ -120,8 +131,8 @@ module column_simulation(
                 WRITE:begin
                     //start writing to memory
                     //                               row 0  :  midlle rows and top row
-                    wt_data_u_n   <= (row == 6'b0) ? wt_data_u_n : u_np1_ij ;
-                    wt_data_u_nm1 <= (row == 6'b0) ? u_n_bot : u_n_ij;
+                    in_wt_data_u_n   <= (row == 6'b0) ? in_wt_data_u_n : u_np1_ij ;
+                    in_wt_data_u_nm1 <= (row == 6'b0) ? u_n_bot : u_n_ij;
                     u_n_ijm1      <= (row == 6'b0) ? u_n_bot : u_n_ij;
                     u_n_bot       <= (row == 6'b0) ? u_np1_ij: u_n_bot;
                     we_unm1       <= 1;
@@ -146,148 +157,150 @@ module column_simulation(
         end
     end
 
-    //Look-Up Table for the initialization of the memory blocks
-    always@(*)begin
-        case(row)
-            5'd0:begin
-                        wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
-                    end
-            5'd1:begin
-                        wt_data_u_n <= 18'b0_0_0000_0100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0000_0100_0000_0000;
-                    end
-            5'd2:begin
-                        wt_data_u_n <= 18'b0_0_0000_1000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0000_1000_0000_0000;
-                    end
-            5'd3:begin
-                        wt_data_u_n <= 18'b0_0_0000_1100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0000_1100_0000_0000;
-                    end
-            5'd4:begin
-                        wt_data_u_n <= 18'b0_0_0001_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0001_0000_0000_0000;
-                    end
-            5'd5:begin
-                        wt_data_u_n <= 18'b0_0_0001_0100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0001_0100_0000_0000;
-                    end
-            5'd6:begin
-                        wt_data_u_n <= 18'b0_0_0001_1000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0001_1000_0000_0000;
-                    end
-            5'd7:begin
-                        wt_data_u_n <= 18'b0_0_0001_1100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0001_1100_0000_0000;
-                    end
-            5'd8:begin
-                        wt_data_u_n <= 18'b0_0_0010_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0010_0000_0000_0000;
-                    end
-            5'd9:begin
-                        wt_data_u_n <= 18'b0_0_0010_0100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0010_0100_0000_0000;
-                    end
-            5'd10:begin
-                        wt_data_u_n <= 18'b0_0_0010_1000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0010_1000_0000_0000;
-                    end
-            5'd11:begin
-                        wt_data_u_n <= 18'b0_0_0010_1100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0010_1100_0000_0000;
-                    end
-            5'd12:begin
-                        wt_data_u_n <= 18'b0_0_0011_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0011_0000_0000_0000;
-                    end
-            5'd13:begin
-                        wt_data_u_n <= 18'b0_0_0011_0100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0011_0100_0000_0000;
-                    end
-            5'd14:begin
-                        wt_data_u_n <= 18'b0_0_0011_1000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0011_1000_0000_0000;
-                    end
-            5'd15:begin
-                        wt_data_u_n <= 18'b0_0_0011_1100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0011_1100_0000_0000;
-                    end
-            5'd16:begin
-                        wt_data_u_n <= 18'b0_0_0100_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0100_0000_0000_0000;
-                    end
-            5'd17:begin
-                        wt_data_u_n <= 18'b0_0_0011_1100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0011_1100_0000_0000;
-                    end
-            5'd18:begin
-                        wt_data_u_n <= 18'b0_0_0011_1000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0011_1000_0000_0000;
-                    end
-            5'd19:begin
-                        wt_data_u_n <= 18'b0_0_0011_0100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0011_0100_0000_0000;
-                    end
-            5'd20:begin
-                        wt_data_u_n <= 18'b0_0_0011_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0011_0000_0000_0000;
-                    end
-            5'd21:begin
-                        wt_data_u_n <= 18'b0_0_0010_1100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0010_1100_0000_0000;
-                    end
-            5'd22:begin
-                        wt_data_u_n <= 18'b0_0_0010_1000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0010_1000_0000_0000;
-                    end
-            5'd23:begin
-                        wt_data_u_n <= 18'b0_0_0010_0100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0010_0100_0000_0000;
-                    end
-            5'd24:begin
-                        wt_data_u_n <= 18'b0_0_0010_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0010_0000_0000_0000;
-                    end
-            5'd25:begin
-                        wt_data_u_n <= 18'b0_0_0001_1100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0001_1100_0000_0000;
-                    end
-            5'd26:begin
-                        wt_data_u_n <= 18'b0_0_0001_1000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0001_1000_0000_0000;
-                    end
-            5'd27:begin
-                        wt_data_u_n <= 18'b0_0_0001_0100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0001_0100_0000_0000;
-                    end
-            5'd28:begin
-                        wt_data_u_n <= 18'b0_0_0001_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0001_0000_0000_0000;
-                    end
-            5'd29:begin
-                        wt_data_u_n <= 18'b0_0_0000_1100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0000_1100_0000_0000;
-                    end
-            5'd30:begin
-                        wt_data_u_n <= 18'b0_0_0000_1000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0000_1000_0000_0000;
-                    end
-            5'd31:begin
-                        wt_data_u_n <= 18'b0_0_0000_0100_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0000_0100_0000_0000;
-                    end
-            5'd32:begin
-                        wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
-                        wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
-                    end
-            default:begin
-                wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
-                wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
-            end
-        endcase
-    end
+    // //Look-Up Table for the initialization of the memory blocks
+    // always@(*)begin
+    //     case(row)
+    //         5'd0:begin
+    //                     wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
+    //                 end
+    //         5'd1:begin
+    //                     wt_data_u_n <= 18'b0_0_0000_0100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0000_0100_0000_0000;
+    //                 end
+    //         5'd2:begin
+    //                     wt_data_u_n <= 18'b0_0_0000_1000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0000_1000_0000_0000;
+    //                 end
+    //         5'd3:begin
+    //                     wt_data_u_n <= 18'b0_0_0000_1100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0000_1100_0000_0000;
+    //                 end
+    //         5'd4:begin
+    //                     wt_data_u_n <= 18'b0_0_0001_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0001_0000_0000_0000;
+    //                 end
+    //         5'd5:begin
+    //                     wt_data_u_n <= 18'b0_0_0001_0100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0001_0100_0000_0000;
+    //                 end
+    //         5'd6:begin
+    //                     wt_data_u_n <= 18'b0_0_0001_1000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0001_1000_0000_0000;
+    //                 end
+    //         5'd7:begin
+    //                     wt_data_u_n <= 18'b0_0_0001_1100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0001_1100_0000_0000;
+    //                 end
+    //         5'd8:begin
+    //                     wt_data_u_n <= 18'b0_0_0010_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0010_0000_0000_0000;
+    //                 end
+    //         5'd9:begin
+    //                     wt_data_u_n <= 18'b0_0_0010_0100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0010_0100_0000_0000;
+    //                 end
+    //         5'd10:begin
+    //                     wt_data_u_n <= 18'b0_0_0010_1000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0010_1000_0000_0000;
+    //                 end
+    //         5'd11:begin
+    //                     wt_data_u_n <= 18'b0_0_0010_1100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0010_1100_0000_0000;
+    //                 end
+    //         5'd12:begin
+    //                     wt_data_u_n <= 18'b0_0_0011_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0011_0000_0000_0000;
+    //                 end
+    //         5'd13:begin
+    //                     wt_data_u_n <= 18'b0_0_0011_0100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0011_0100_0000_0000;
+    //                 end
+    //         5'd14:begin
+    //                     wt_data_u_n <= 18'b0_0_0011_1000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0011_1000_0000_0000;
+    //                 end
+    //         5'd15:begin
+    //                     wt_data_u_n <= 18'b0_0_0011_1100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0011_1100_0000_0000;
+    //                 end
+    //         5'd16:begin
+    //                     wt_data_u_n <= 18'b0_0_0100_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0100_0000_0000_0000;
+    //                 end
+    //         5'd17:begin
+    //                     wt_data_u_n <= 18'b0_0_0011_1100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0011_1100_0000_0000;
+    //                 end
+    //         5'd18:begin
+    //                     wt_data_u_n <= 18'b0_0_0011_1000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0011_1000_0000_0000;
+    //                 end
+    //         5'd19:begin
+    //                     wt_data_u_n <= 18'b0_0_0011_0100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0011_0100_0000_0000;
+    //                 end
+    //         5'd20:begin
+    //                     wt_data_u_n <= 18'b0_0_0011_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0011_0000_0000_0000;
+    //                 end
+    //         5'd21:begin
+    //                     wt_data_u_n <= 18'b0_0_0010_1100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0010_1100_0000_0000;
+    //                 end
+    //         5'd22:begin
+    //                     wt_data_u_n <= 18'b0_0_0010_1000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0010_1000_0000_0000;
+    //                 end
+    //         5'd23:begin
+    //                     wt_data_u_n <= 18'b0_0_0010_0100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0010_0100_0000_0000;
+    //                 end
+    //         5'd24:begin
+    //                     wt_data_u_n <= 18'b0_0_0010_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0010_0000_0000_0000;
+    //                 end
+    //         5'd25:begin
+    //                     wt_data_u_n <= 18'b0_0_0001_1100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0001_1100_0000_0000;
+    //                 end
+    //         5'd26:begin
+    //                     wt_data_u_n <= 18'b0_0_0001_1000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0001_1000_0000_0000;
+    //                 end
+    //         5'd27:begin
+    //                     wt_data_u_n <= 18'b0_0_0001_0100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0001_0100_0000_0000;
+    //                 end
+    //         5'd28:begin
+    //                     wt_data_u_n <= 18'b0_0_0001_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0001_0000_0000_0000;
+    //                 end
+    //         5'd29:begin
+    //                     wt_data_u_n <= 18'b0_0_0000_1100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0000_1100_0000_0000;
+    //                 end
+    //         5'd30:begin
+    //                     wt_data_u_n <= 18'b0_0_0000_1000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0000_1000_0000_0000;
+    //                 end
+    //         5'd31:begin
+    //                     wt_data_u_n <= 18'b0_0_0000_0100_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0000_0100_0000_0000;
+    //                 end
+    //         5'd32:begin
+    //                     wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
+    //                     wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
+    //                 end
+    //         default:begin
+    //             wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
+    //             wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
+    //         end
+    //     endcase
+    // end
 
+
+  
 endmodule
 
 module ComputeModule_for_col(
@@ -379,3 +392,4 @@ module M10K_1000_8(
         q <= mem[read_address]; // q doesn't get d in this clock cycle
     end
 endmodule
+
