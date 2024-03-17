@@ -26,41 +26,18 @@ module column_simulation(
     reg signed [17:0] u_n_ijm1;
     reg we_un;
     reg we_unm1;
-    reg initial_read;
 
-
-    //assign u_n_ijp1 = (initial_read) ? initial_u_n_ijp1 : current_u_n_ijp1; //choose the initial traversal or others
-    //assign u_nm1_ij = (initial_read) ? initial_u_nm1_ij : current_u_nm1_ij; //choose the initial traversal or others
-   
     //assign the output amplitude
     assign u_np1_ij_out = u_np1_ij;
-
-   
-
-    // M10K_1000_8 init_un (.q(initial_u_n_ijp1),
-    //                      .d(wt_data_u_n),
-    //                      .write_address(row),
-    //                      .read_address(rd_addr), //read the next one
-    //                      .we(ini_we_un),  
-    //                      .clk(clk)
-    //                      );
-
-    // M10K_1000_8 init_un_1 (.q(initial_u_nm1_ij),
-    //                        .d(wt_data_u_nm1),
-    //                        .write_address(row),
-    //                        .read_address(row), //read the current one
-    //                        .we(ini_we_unm1), 
-    //                        .clk(clk)
-    //                        );
 
     //implementation of the ComputeModule
     wire signed [17:0] input_u_n_ij;
     wire signed [17:0] input_u_n_i_jm1;
     wire signed [17:0] input_u_n_i_jp1;
 
-    assign input_u_n_ij    [17:0] = (row == 18'b0) ? u_n_bot : u_n_ij;
-    assign input_u_n_i_jm1 [17:0] = (row == 18'b0) ? 18'b0 : u_n_ijm1;
-    assign input_u_n_i_jp1 [17:0] = (row + 6'b1 == NUM_ROW) ? 18'b0 : u_n_ijp1;
+    assign input_u_n_ij    [17:0] = (row == 18'b0)          ? u_n_bot : u_n_ij;
+    assign input_u_n_i_jm1 [17:0] = (row == 18'b0)          ? 18'b0   : u_n_ijm1;
+    assign input_u_n_i_jp1 [17:0] = (row + 6'b1 == NUM_ROW) ? 18'b0   : u_n_ijp1;
 
     ComputeModule_for_col compute_start (.u_n_ij(input_u_n_ij), 
                                          .u_nm1_ij(u_nm1_ij), 
@@ -78,8 +55,8 @@ module column_simulation(
     parameter [2:0] WAIT        = 3'b010;
     parameter [2:0] WRITE       = 3'b011;
     parameter [2:0] SHIFT       = 3'b100;
-    parameter [2:0] TRAVERSE    = 3'b101;
-  
+    parameter [2:0] WAIT_2      = 3'b101;
+
     //instantiation of the memory blocks
     wire[5:0] rd_addr;
     reg ini_we_un;
@@ -89,7 +66,9 @@ module column_simulation(
     reg [2:0] state;
     wire input_we_un;
     wire input_we_unm1;
-    assign input_we_un = (state == INITIAL_MEM || rst == 1)?ini_we_un : we_un;
+    
+    //choose write enable signal between the initialization phase and process phase
+    assign input_we_un   = (state == INITIAL_MEM || rst == 1)?ini_we_un   : we_un;
     assign input_we_unm1 = (state == INITIAL_MEM || rst == 1)?ini_we_unm1 : we_unm1;
 
     M10K_1000_8 un (.q(u_n_ijp1),
@@ -124,16 +103,15 @@ module column_simulation(
                 end
                 INITIAL:begin
                     //reset to the row 0
-                    row <= 0;
-                    wt_data_u_n <= 18'b0;
+                    row           <= 0;
+                    wt_data_u_n   <= 18'b0;
                     wt_data_u_nm1 <= 18'b0;
-                    u_n_bot <= 18'b0;
-                    u_n_ij <= 18'b0;
-                    u_n_ijm1 <= 18'b0;
-                    we_un <= 0;
-                    we_unm1 <= 0;
-                    initial_read <= 1; 
-                    state <= WAIT;
+                    u_n_bot       <= 18'b0;
+                    u_n_ij        <= 18'b0;
+                    u_n_ijm1      <= 18'b0;
+                    we_un         <= 0;
+                    we_unm1       <= 0;
+                    state         <= WAIT;
                 end
                 WAIT:begin
                     //waiting for the data read from the memory block
@@ -141,47 +119,29 @@ module column_simulation(
                 end
                 WRITE:begin
                     //start writing to memory
-                    if(row == 6'b0)begin
-                        //row 33
-                        wt_data_u_nm1 <= u_n_bot;
-                        u_n_ijm1 <= u_n_bot;
-                        u_n_bot <= u_np1_ij;
-                        we_unm1 <= 1;
-                        we_un <= 0;
-
-                    end else begin
-                        //midlle rows and top row
-                        wt_data_u_n <= u_np1_ij;
-                        wt_data_u_nm1 <= u_n_ij;
-                        u_n_ijm1 <= u_n_ij;
-                        we_unm1 <= 1;
-                        we_un <= 1;
-                        u_n_bot <= u_n_bot;
-                
-                    end
-                    state <= SHIFT;
+                    //                               row 0  :  midlle rows and top row
+                    wt_data_u_n   <= (row == 6'b0) ? wt_data_u_n : u_np1_ij ;
+                    wt_data_u_nm1 <= (row == 6'b0) ? u_n_bot : u_n_ij;
+                    u_n_ijm1      <= (row == 6'b0) ? u_n_bot : u_n_ij;
+                    u_n_bot       <= (row == 6'b0) ? u_np1_ij: u_n_bot;
+                    we_unm1       <= 1;
+                    we_un         <= (row == 6'b0) ? 0 : 1;
+                    state         <= SHIFT;
                 end
                 SHIFT:begin
-                    if( row + 6'b1 >= NUM_ROW)begin
-                        //row 33
-                      u_n_ij <= u_n_bot;
-                      state <= TRAVERSE;
-                      row <= 6'b0;
-                    end else begin
-                        //midlle rows
-                        u_n_ij <= u_n_ijp1;
-                        state <= WAIT;
-                        row <= row + 6'b1;
-                    end
+                    //updating the un
+                    u_n_ij  <= (row == NUM_ROW - 6'b1) ? u_n_bot : u_n_ijp1;
+                    //reset the rows when reach the top row
+                    row     <= (row == NUM_ROW - 6'b1) ? 6'b0 : row + 6'b1;
                     we_un   <= 0;
                     we_unm1 <= 0;
+                    //start another traversal
+                    state <= WAIT_2;
                 end
-                TRAVERSE:begin
-                    //finish the first travese for the column
-                    initial_read <= 1'b0;
-                    state <= WAIT;
+                 WAIT_2:begin
+                    //waiting for the data read from the memory block
+                    state <= WRITE;
                 end
-                
             endcase
         end
     end
@@ -321,8 +281,6 @@ module column_simulation(
                         wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
                         wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
                     end
-    
-    
             default:begin
                 wt_data_u_n <= 18'b0_0_0000_0000_0000_0000;
                 wt_data_u_nm1 <= 18'b0_0_0000_0000_0000_0000;
