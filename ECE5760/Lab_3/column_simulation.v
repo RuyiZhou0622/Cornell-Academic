@@ -29,48 +29,29 @@ module column_simulation(
     reg initial_read;
 
 
-    assign u_n_ijp1 = (initial_read) ? initial_u_n_ijp1 : current_u_n_ijp1; //choose the initial traversal or others
-    assign u_nm1_ij = (initial_read) ? initial_u_nm1_ij : current_u_nm1_ij; //choose the initial traversal or others
-
+    //assign u_n_ijp1 = (initial_read) ? initial_u_n_ijp1 : current_u_n_ijp1; //choose the initial traversal or others
+    //assign u_nm1_ij = (initial_read) ? initial_u_nm1_ij : current_u_nm1_ij; //choose the initial traversal or others
+   
     //assign the output amplitude
     assign u_np1_ij_out = u_np1_ij;
 
-    //instantiation of the memory blocks
-    wire[5:0] rd_addr;
-    reg ini_we_un;
-    reg ini_we_unm1;
-    assign rd_addr = (row+1 == NUM_ROW) ? 5'b0 : row + 1;
-    M10K_1000_8 un (.q(current_u_n_ijp1),
-                    .d(wt_data_u_n),
-                    .write_address(row),
-                    .read_address(rd_addr), //read the next one
-                    .we(we_un),
-                    .clk(clk)
-                    );
+   
 
-    M10K_1000_8 un_1 (.q(current_u_nm1_ij),
-                      .d(wt_data_u_nm1),
-                      .write_address(row),
-                      .read_address(row), //read the current one
-                      .we(we_unm1),
-                      .clk(clk)
-                      );
+    // M10K_1000_8 init_un (.q(initial_u_n_ijp1),
+    //                      .d(wt_data_u_n),
+    //                      .write_address(row),
+    //                      .read_address(rd_addr), //read the next one
+    //                      .we(ini_we_un),  
+    //                      .clk(clk)
+    //                      );
 
-    M10K_1000_8 init_un (.q(initial_u_n_ijp1),
-                         .d(wt_data_u_n),
-                         .write_address(row),
-                         .read_address(rd_addr), //read the next one
-                         .we(ini_we_un),  
-                         .clk(clk)
-                         );
-
-    M10K_1000_8 init_un_1 (.q(initial_u_nm1_ij),
-                           .d(wt_data_u_nm1),
-                           .write_address(row),
-                           .read_address(row), //read the current one
-                           .we(ini_we_unm1), 
-                           .clk(clk)
-                           );
+    // M10K_1000_8 init_un_1 (.q(initial_u_nm1_ij),
+    //                        .d(wt_data_u_nm1),
+    //                        .write_address(row),
+    //                        .read_address(row), //read the current one
+    //                        .we(ini_we_unm1), 
+    //                        .clk(clk)
+    //                        );
 
     //implementation of the ComputeModule
     wire signed [17:0] input_u_n_ij;
@@ -99,7 +80,33 @@ module column_simulation(
     parameter [2:0] SHIFT       = 3'b100;
     parameter [2:0] TRAVERSE    = 3'b101;
   
+    //instantiation of the memory blocks
+    wire[5:0] rd_addr;
+    reg ini_we_un;
+    reg ini_we_unm1;
+    assign rd_addr = (row+1 == NUM_ROW) ? 5'b0 : row + 1;
+    
     reg [2:0] state;
+    wire input_we_un;
+    wire input_we_unm1;
+    assign input_we_un = (state == INITIAL_MEM || rst == 1)?ini_we_un : we_un;
+    assign input_we_unm1 = (state == INITIAL_MEM || rst == 1)?ini_we_unm1 : we_unm1;
+
+    M10K_1000_8 un (.q(u_n_ijp1),
+                    .d(wt_data_u_n),
+                    .write_address(row),
+                    .read_address(rd_addr), //read the next one
+                    .we(input_we_un),
+                    .clk(clk)
+                    );
+
+    M10K_1000_8 un_1 (.q(u_nm1_ij),
+                      .d(wt_data_u_nm1),
+                      .write_address(row),
+                      .read_address(row), //read the current one
+                      .we(input_we_unm1),
+                      .clk(clk)
+                      );
 
     always@(posedge clk)begin
         if(rst)begin
