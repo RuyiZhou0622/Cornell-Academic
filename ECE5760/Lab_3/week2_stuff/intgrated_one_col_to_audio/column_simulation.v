@@ -5,14 +5,14 @@ module column_simulation(
     //  row_out,
     //  wt_data_u_n_in,
     //  wt_data_u_nm1_in,
-    request,
+   // request,
     rho,
     u_np1_ij_out
 );
     input clk;
     input rst;
     input [17:0] rho;
-    input request;
+   // input request;
     // output [4:0] row_out;
     // input signed [17:0] wt_data_u_n_in;
     // input signed [17:0] wt_data_u_nm1_in;
@@ -152,12 +152,12 @@ module column_simulation(
                     state <= WAIT_2;
                 end
                  WAIT_2:begin
-                    if(request)begin
+               //     if(request)begin
                         //waiting for the data read from the memory block
-                        state <= WRITE;
-                    end else begin
-                        state <= WAIT_2; //wait until the audio core is ready to take another input.
-                    end
+                        state <= WAIT;
+              //      end else begin
+              //          state <= WAIT_2; //wait until the audio core is ready to take another input.
+              //      end
                 end
             endcase
         end
