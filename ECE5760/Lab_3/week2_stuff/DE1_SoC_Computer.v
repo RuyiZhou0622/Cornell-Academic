@@ -364,12 +364,12 @@ wire			[15: 0]	hex3_hex0;
 //assign HEX1 = ~hex3_hex0[14: 8];
 //assign HEX2 = ~hex3_hex0[22:16];
 //assign HEX3 = ~hex3_hex0[30:24];
-assign HEX4 = 7'b1111111;
-assign HEX5 = 7'b1111111;
-assign HEX3 = 7'b1111111;
-assign HEX2 = 7'b1111111;
-assign HEX1 = 7'b1111111;
-assign HEX0 = 7'b1111111;
+//assign HEX4 = 7'b1111111;
+//assign HEX5 = 7'b1111111;
+//assign HEX3 = 7'b1111111;
+//assign HEX2 = 7'b1111111;
+//assign HEX1 = 7'b1111111;
+//assign HEX0 = 7'b1111111;
 
 //=======================================================
 // Audio controller for AVALON bus-master
@@ -447,8 +447,10 @@ wire [15:0] right_audio_output, left_audio_output ;
 
 reg decimated_audio_ready ; 
 reg [3:0] decimated_audio_clk_counter ;
-wire request;
+reg request;
 wire audio_done;
+wire request_drum;
+assign request_drum = request;
 wire signed [17:0] out_un;
 always @(posedge CLOCK_50) begin //CLOCK_50
 
@@ -675,22 +677,22 @@ Computer_System The_System (
 	.hps_io_hps_io_usb1_inst_NXT		(HPS_USB_NXT)
 );
 
-wire [31:0] timer;
-wire [23:0] real_time;
-assign real_time = timer / 100000; //ignore the fraction part to save hardware resources
+wire [31:0] timer_ff;
+// wire [23:0] real_time;
+// assign real_time = timer_ff / 100000; //ignore the fraction part to save hardware resources
 
-HexDigit Digit0(HEX0, real_time[3:0]);
-HexDigit Digit1(HEX1, real_time[7:4]);
-HexDigit Digit2(HEX2, real_time[11:8]);
-HexDigit Digit3(HEX3, real_time[15:12]);
-HexDigit Digit4(HEX4, real_time[19:16]);
-HexDigit Digit5(HEX5, real_time[23:20]);
+HexDigit Digit0(HEX0, timer_ff[3:0]);
+HexDigit Digit1(HEX1, timer_ff[7:4]);
+HexDigit Digit2(HEX2, timer_ff[11:8]);
+HexDigit Digit3(HEX3, timer_ff[15:12]);
+HexDigit Digit4(HEX4, timer_ff[19:16]);
+HexDigit Digit5(HEX5, timer_ff[23:20]);
 
 drum_33_33 my_drum (.clk(CLOCK_50),
 					.rst(~KEY[0]),
 					.output_un(out_un),
-					.output_time(timer),
-					.audio_request(request),
+					.output_time(timer_ff),
+					.audio_request(request_drum),
 					.audio_done_out(audio_done)
 					);
 
@@ -3451,4 +3453,3 @@ module M10K_1000_8(
         q <= mem[read_address]; // q doesn't get d in this clock cycle
     end
 endmodule
-
