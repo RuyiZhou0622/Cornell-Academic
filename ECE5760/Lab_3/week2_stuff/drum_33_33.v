@@ -1,13 +1,13 @@
 module drum_33_33 (
     clk,
     rst,
-    rho,
+    //rho,
     output_un,
     output_time
 );
     input clk;
     input rst;
-    input [17:0] rho;
+    //input [17:0] rho;
     output signed [17:0] output_un;
     output [31:0] output_time; 
 
@@ -15,6 +15,14 @@ module drum_33_33 (
     wire signed [17:0] u_np1 [32:0];
     wire signed [17:0] drum_center_node;
     wire [31:0] timer;
+    wire signed [17:0] rho_eff;
+
+    //nonlinear rho calculation
+    rho_calculaion rho_eff_cal (.rho_0(18'b0_0_1000_0000_0000_0000), // 0.25
+                            .gten(18'b0_0_0010_0000_0000_0000), // 2^-4
+                            .u_n_ij(drum_center_node),
+                            .rho_eff(rho_eff)
+                            );
 
     genvar i;
     generate 
@@ -23,7 +31,7 @@ module drum_33_33 (
                 //the left most column
                 column_simulation #(.NUM(0)) col_1 (.clk(clk),
                                                     .rst(rst),
-                                                    .rho(rho),
+                                                    .rho(rho_eff),
                                                     .u_np1_ij_out(u_np1[0]),
                                                     .left(18'b0),
                                                     .right(side_node_u_n[1]),
@@ -36,7 +44,7 @@ module drum_33_33 (
                 //the right most column
                 column_simulation #(.NUM(32)) col_2 (.clk(clk),
                                                     .rst(rst),
-                                                    .rho(rho),
+                                                    .rho(rho_eff),
                                                     .u_np1_ij_out(u_np1[32]),
                                                     .left(side_node_u_n[31]),
                                                     .right(18'b0),
@@ -51,7 +59,7 @@ module drum_33_33 (
                     //find the center node
                     column_simulation #(.NUM(i)) col_3 (.clk(clk),
                                                     .rst(rst),
-                                                    .rho(rho),
+                                                    .rho(rho_eff),
                                                     .u_np1_ij_out(u_np1[i]),
                                                     .left(side_node_u_n[i-1]),
                                                     .right(side_node_u_n[i+1]),
@@ -62,7 +70,7 @@ module drum_33_33 (
                 end else begin
                     column_simulation #(.NUM(i)) col_4 (.clk(clk),
                                                         .rst(rst),
-                                                        .rho(rho),
+                                                        .rho(rho_eff),
                                                         .u_np1_ij_out(u_np1[i]),
                                                         .left(side_node_u_n[i-1]),
                                                         .right(side_node_u_n[i+1]),
@@ -81,6 +89,36 @@ module drum_33_33 (
 
     assign output_time = timer;
 
+
+endmodule
+
+module rho_calculaion (
+    rho_0,
+    gten,
+    u_n_ij,
+    rho_eff
+);
+
+    input signed [17:0] rho_0;
+    input signed [17:0] gten;
+    input signed [17:0] u_n_ij;
+    output signed [17:0] rho_eff;
+
+    wire signed [17:0] a;
+    wire signed [17:0] b;
+  
+
+    signed_mult aaa (.out(a),
+                     .a(gten),
+                     .b(u_n_ij)
+                    );
+
+    signed_mult bbb (.out(b),
+                     .a(a),
+                     .b(a)
+                    );
+
+    assign rho_eff = b + rho_0;
 
 endmodule
 
@@ -122,13 +160,13 @@ module column_simulation #(parameter NUM = 0) (
     reg we_unm1;
     reg signed [17:0] drum_center;
     reg [31:0] output_time;
-
+    reg [31:0] output_time_fixed;
     assign row_out = row;
     //assign the output amplitude
     assign u_np1_ij_out = u_np1_ij;
     assign u_n_ij_out = u_n_ij;
     assign drum_center_out = drum_center;
-    assign output_time_out = output_time;
+    assign output_time_out = output_time_fixed;
 
     //implementation of the ComputeModule
     wire signed [17:0] input_u_n_ij;
@@ -168,6 +206,7 @@ module column_simulation #(parameter NUM = 0) (
     assign rd_addr = (row+1 == NUM_ROW) ? 5'b0 : row + 1;
     
     reg [2:0] state;
+    reg time_done;
     wire input_we_un;
     wire input_we_unm1;
     
@@ -201,6 +240,8 @@ module column_simulation #(parameter NUM = 0) (
             ini_we_unm1 <= 1;
             drum_center <= 0;
             output_time <= 0;
+            output_time_fixed <= 0;
+            time_done <= 0;
         end else begin
             case(state)
                 INITIAL_MEM:begin
@@ -210,6 +251,8 @@ module column_simulation #(parameter NUM = 0) (
                     in_wt_data_u_nm1 <= wt_data_u_nm1;
                     ini_we_un <= (row == NUM_ROW - 1)? 0: 1;
                     ini_we_unm1 <= (row == NUM_ROW - 1)? 0: 1;
+                    output_time_fixed <= 0;
+                    time_done <= 0;
                     state <= (row == NUM_ROW - 1) ? INITIAL:INITIAL_MEM;
                 end
                 INITIAL:begin
@@ -253,11 +296,15 @@ module column_simulation #(parameter NUM = 0) (
                     row     <= (row == NUM_ROW - 6'b1) ? 6'b0 : row + 6'b1;
                     we_un   <= 0;
                     we_unm1 <= 0;
+                    if(row == 6'd32) begin
+                        time_done <= 1;
+                    end
                     //start another traversal
                     state <= WAIT_2;
                 end
                  WAIT_2:begin
                     output_time <= output_time + 1;
+                    output_time_fixed <= (time_done && (output_time_fixed == 0)) ? output_time : output_time_fixed;
                     //waiting for the data read from the memory block
                     state <= WRITE;
                 end
