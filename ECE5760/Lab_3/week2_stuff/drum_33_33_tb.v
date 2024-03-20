@@ -4,7 +4,7 @@ module drum_33_33_tb;
 
 reg clk;
 reg rst;
-reg [17:0] rho;
+//reg [17:0] rho;
 wire signed [17:0]  output_un;
 wire [31:0]  output_time;
 
@@ -25,7 +25,7 @@ end
 initial begin
     // Initialize inputs
     rst = 1;
-    rho       = 18'b0_0_0010_0000_0000_0000;
+   // rho       = 18'b0_0_0010_0000_0000_0000;
     // Apply reset
     #17;
     rst = 0; // Release reset
