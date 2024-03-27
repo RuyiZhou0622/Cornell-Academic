@@ -499,6 +499,8 @@ end // always @(posedge state_clock)
 wire [7:0] hps_col;
 wire [7:0] hps_row;
 wire signed [17:0] hps_data;
+wire signed [17:0] hps_rhogain;
+wire [7:0] hps_numrow;
 
 Computer_System The_System (
 	////////////////////////////////////
@@ -542,6 +544,8 @@ Computer_System The_System (
 	 .pio_data_external_connection_export (hps_data),             //        pio_data_external_connection.export
 	 .pio_row_external_connection_export (hps_row),
      .pio_rst_external_connection_export ({7'b0,~KEY[0]}),   
+     .pio_numrow_external_connection_export(hps_numrow),           //      pio_numrow_external_connection.export
+	 .pio_rhogain_external_connection_export(hps_rhogain),      
 	// DDR3 SDRAM
 	.memory_mem_a			(HPS_DDR3_ADDR),
 	.memory_mem_ba			(HPS_DDR3_BA),
@@ -663,7 +667,9 @@ drum_33_33 my_drum (.clk(CLOCK_50),
 					.audio_done_out(audio_done),
                     .hps_col(hps_col),
                     .hps_row(hps_row),
-                    .hps_data(hps_data)
+                    .hps_data(hps_data),
+                    .hps_rhogain(hps_rhogain),
+                    .hps_numrow(hps_numrow)
 					);
 
 
@@ -679,7 +685,9 @@ module drum_33_33 (
     audio_done_out,
     hps_col,
     hps_row,
-    hps_data
+    hps_data,
+    hps_rhogain,
+    hps_numrow
 );
     input clk;
     input rst;
@@ -691,18 +699,23 @@ module drum_33_33 (
     input [7:0] hps_col;
     input [7:0] hps_row;
     input signed [17:0] hps_data;
+    input signed [17:0] hps_rhogain;
+    input [7:0] hps_numrow;
 
-    wire signed [17:0] side_node_u_n [85:0];
-    wire signed [17:0] u_np1 [85:0];
-    wire signed [17:0] drum_center_node;
+    wire signed [17:0] side_node_u_n [100:0];
+    wire signed [17:0] u_np1 [100:0];
+    wire signed [17:0] drum_center_node ;
     wire [31:0] timer;
     wire signed [17:0] rho_eff;
     wire audio_done;
-
+	 wire [7:0] last_row;
+	 wire [7:0] temp_row;
+	 
+	
     assign audio_done_out = audio_done;
 
     //nonlinear rho calculation
-    rho_calculaion rho_eff_cal (.rho_0(18'b0_0_1000_0000_0000_0000), // 0.25
+    rho_calculaion rho_eff_cal (.rho_0(hps_rhogain), // 0.25
                             .gten(18'b0_0_0010_0000_0000_0000), // 2^-4
                             .u_n_ij(drum_center_node),
                             .rho_eff(rho_eff)
@@ -710,7 +723,7 @@ module drum_33_33 (
 
     genvar i;
     generate 
-        for(i = 0; i < 85; i=i+1) begin: genrate_columns
+        for(i = 0; i < 100; i=i+1) begin: genrate_columns
             if(i == 0) begin
                 //the left most column
                 column_simulation #(.NUM(0)) col_1 (.clk(clk),
@@ -726,30 +739,32 @@ module drum_33_33 (
                                                     .audio_done_out(),
                                                     .hps_col(hps_col),
                                                     .hps_row(hps_row),
-                                                    .hps_data(hps_data)
+                                                    .hps_data(hps_data),
+                                                    .hps_numrow(hps_numrow)
                                                     );
 
-            end else if(i == 84) begin
+            end else if(i == 99) begin
                 //the right most column
-                column_simulation #(.NUM(84)) col_2 (.clk(clk),
+                column_simulation #(.NUM(99)) col_2 (.clk(clk),
                                                     .rst(rst),
                                                     .rho(rho_eff),
-                                                    .u_np1_ij_out(u_np1[84]),
-                                                    .left(side_node_u_n[83]),
+                                                    .u_np1_ij_out(u_np1[99]),
+                                                    .left(side_node_u_n[98]),
                                                     .right(18'b0),
-                                                    .u_n_ij_out(side_node_u_n[84]),
+                                                    .u_n_ij_out(side_node_u_n[99]),
                                                     .drum_center_out(),
                                                     .output_time_out(),
                                                     .audio_request(audio_request),
                                                     .audio_done_out(),
                                                     .hps_col(hps_col),
                                                     .hps_row(hps_row),
-                                                    .hps_data(hps_data)
+                                                    .hps_data(hps_data),
+                                                    .hps_numrow(hps_numrow)
                                                     );
 
             end else begin
                 //the middle columns
-                if(i == 43)begin
+                if(i == 50)begin //(numrow + 1)/2
                     //find the center node
                     column_simulation #(.NUM(i)) col_3 (.clk(clk),
                                                     .rst(rst),
@@ -764,7 +779,8 @@ module drum_33_33 (
                                                     .audio_done_out(audio_done),
                                                     .hps_col(hps_col),
                                                     .hps_row(hps_row),
-                                                    .hps_data(hps_data)
+                                                    .hps_data(hps_data),
+                                                    .hps_numrow(hps_numrow)
                                                     );
                 end else begin
                     column_simulation #(.NUM(i)) col_4 (.clk(clk),
@@ -780,7 +796,8 @@ module drum_33_33 (
                                                         .audio_done_out(),
                                                         .hps_col(hps_col),
                                                         .hps_row(hps_row),
-                                                        .hps_data(hps_data)
+                                                        .hps_data(hps_data),
+                                                        .hps_numrow(hps_numrow)
                                                         );
                 end
 
@@ -841,7 +858,8 @@ module column_simulation #(parameter NUM = 0) (
     audio_done_out,
     hps_col,
     hps_row,
-    hps_data
+    hps_data,
+    hps_numrow
 );
     input clk;
     input rst;
@@ -855,17 +873,20 @@ module column_simulation #(parameter NUM = 0) (
     input audio_request;
     output audio_done_out;
     input [7:0] hps_col;
-    input [7:0] hps_row;
+    input [8:0] hps_row;
     input signed [17:0] hps_data;
+    input [8:0] hps_numrow;
 
-    parameter [7:0] NUM_ROW = 8'd85;
-    parameter [7:0] NUM_COL = 8'd85;
+    //parameter [8:0] NUM_ROW = 9'd511;
+     wire [8:0] NUM_ROW;
+     assign NUM_ROW = hps_numrow;
+    parameter [7:0] NUM_COL = 8'd100;
    
     wire signed [17:0] u_np1_ij;
     wire signed [17:0] u_nm1_ij;
     wire signed [17:0] u_n_ijp1;
 
-    reg [7:0] row; //we only have one column right so we traverse the rows
+    reg [8:0] row; //we only have one column right so we traverse the rows
     reg signed [17:0] wt_data_u_n;
     reg signed [17:0] wt_data_u_nm1;
     reg signed [17:0] in_wt_data_u_n;
@@ -896,9 +917,9 @@ module column_simulation #(parameter NUM = 0) (
 
     assign input_u_n_ij    [17:0] = (row == 18'b0)          ? u_n_bot : u_n_ij;
     assign input_u_n_i_jm1 [17:0] = (row == 18'b0)          ? 18'b0   : u_n_ijm1;
-    assign input_u_n_i_jp1 [17:0] = (row + 6'b1 == NUM_ROW) ? 18'b0   : u_n_ijp1;
+    assign input_u_n_i_jp1 [17:0] = (row + 9'b1 == NUM_ROW) ? 18'b0   : u_n_ijp1;
     assign input_left      [17:0] = (NUM == 0)              ? 18'b0   : left;     //the left most column
-    assign input_right     [17:0] = (NUM == 32)             ? 18'b0   : right;    //the right most column
+    assign input_right     [17:0] = (NUM == 99)             ? 18'b0   : right;    //the right most column
 
     ComputeModule_for_col compute_start (.u_n_ij(input_u_n_ij), 
                                          .u_nm1_ij(u_nm1_ij), 
@@ -920,10 +941,10 @@ module column_simulation #(parameter NUM = 0) (
     parameter [2:0] WAIT_0      = 3'b110;
 
     //instantiation of the memory blocks
-    wire[7:0] rd_addr;
+    wire[8:0] rd_addr;
     reg ini_we_un;
     reg ini_we_unm1;
-    assign rd_addr = (row+1 == NUM_ROW) ? 8'b0 : row + 1;
+    assign rd_addr = (row+1 == NUM_ROW) ? 9'b0 : row + 1;
     
     reg [2:0] state;
     reg time_done;
@@ -931,8 +952,7 @@ module column_simulation #(parameter NUM = 0) (
     wire input_we_unm1;
     
     //choose write enable signal between the initialization phase and process phase
-    // assign input_we_un   = (state == INITIAL_MEM || rst == 1)?ini_we_un   : we_un;
-    // assign input_we_unm1 = (state == INITIAL_MEM || rst == 1)?ini_we_unm1 : we_unm1;
+
     assign input_we_un   = (state == INITIAL_MEM )?ini_we_un   : we_un;
     assign input_we_unm1 = (state == INITIAL_MEM )?ini_we_unm1 : we_unm1;
 
@@ -958,12 +978,8 @@ module column_simulation #(parameter NUM = 0) (
         if(rst)begin
             state <= INITIAL_MEM;
             row <= 0;
-            // in_wt_data_u_n <= wt_data_u_n;
-            // in_wt_data_u_nm1 <= wt_data_u_nm1;
             in_wt_data_u_n <=0;
             in_wt_data_u_nm1 <= 0;
-            // ini_we_un <= 1;
-            // ini_we_unm1 <= 1;
             ini_we_un <=  0;
             ini_we_unm1 <=   0;
             drum_center <= 0;
@@ -975,11 +991,6 @@ module column_simulation #(parameter NUM = 0) (
             case(state)
                 INITIAL_MEM:begin
                     output_time <= output_time ;
-                    // row <= (row == NUM_ROW - 1)? row : row + 1;
-                    // in_wt_data_u_n <= wt_data_u_n;
-                    // in_wt_data_u_nm1 <= wt_data_u_nm1;
-                    // ini_we_un <= (row == NUM_ROW - 1)? 0: 1;
-                    // ini_we_unm1 <= (row == NUM_ROW - 1)? 0: 1;
                     in_wt_data_u_n <= hps_data;
                     in_wt_data_u_nm1 <= hps_data;
                     ini_we_un <= (hps_col == NUM) ? 1 : 0;
@@ -987,7 +998,7 @@ module column_simulation #(parameter NUM = 0) (
                     output_time_fixed <= 0;
                     time_done <= 0;
                     audio_done <= 0;
-                  //  state <= (row == NUM_ROW - 1) ? INITIAL:INITIAL_MEM;
+               
                      state <= ((hps_row == NUM_ROW - 1)&&(hps_col == NUM_COL - 1)) ? WAIT_0 :INITIAL_MEM;
                 end
                 WAIT_0:begin
@@ -1016,26 +1027,26 @@ module column_simulation #(parameter NUM = 0) (
                     output_time <= output_time + 1;
                     //start writing to memory
                     //                               row 0  :  midlle rows and top row
-                    in_wt_data_u_n   <= (row == 8'b0) ? in_wt_data_u_n : u_np1_ij ;
-                    in_wt_data_u_nm1 <= (row == 8'b0) ? u_n_bot : u_n_ij;
-                    u_n_ijm1      <= (row == 8'b0) ? u_n_bot : u_n_ij;
-                    u_n_bot       <= (row == 8'b0) ? u_np1_ij: u_n_bot;
+                    in_wt_data_u_n   <= (row == 9'b0) ? in_wt_data_u_n : u_np1_ij ;
+                    in_wt_data_u_nm1 <= (row == 9'b0) ? u_n_bot : u_n_ij;
+                    u_n_ijm1      <= (row == 9'b0) ? u_n_bot : u_n_ij;
+                    u_n_bot       <= (row == 9'b0) ? u_np1_ij: u_n_bot;
                     we_unm1       <= 1;
-                    we_un         <= (row == 8'b0) ? 0 : 1;
+                    we_un         <= (row == 9'b0) ? 0 : 1;
                     state         <= SHIFT;
-                    if(row == 8'd43 && NUM == 43) begin //midlle row
+                    if(row == (hps_numrow >> 1) && NUM == 50) begin //midlle row
                         drum_center <= u_np1_ij;
                     end
                 end
                 SHIFT:begin
                     output_time <= output_time + 1;
                     //updating the un
-                    u_n_ij  <= (row == NUM_ROW - 8'b1) ? u_n_bot : u_n_ijp1;
+                    u_n_ij  <= (row == (NUM_ROW - 9'b1)) ? u_n_bot : u_n_ijp1;
                     //reset the rows when reach the top row
-                    row     <= (row == NUM_ROW - 8'b1) ? 6'b0 : row + 8'b1;
+                    row     <= (row == (NUM_ROW - 9'b1)) ? 9'b0 : row + 9'b1;
                     we_un   <= 0;
                     we_unm1 <= 0;
-                    if(row == 8'd84) begin
+                    if(row == (NUM_ROW - 9'b1)) begin
                         time_done <= 1;
                     end
                     //start another traversal
@@ -1043,7 +1054,7 @@ module column_simulation #(parameter NUM = 0) (
                 end
                  WAIT_2:begin
                     
-                    if(row == 8'd84 && audio_request == 0) begin
+                    if(row == (NUM_ROW - 9'b1) && audio_request == 0) begin
                         output_time <= output_time;
                         output_time_fixed <= (time_done && (output_time_fixed == 0)) ? output_time : output_time_fixed;
                         audio_done <= 1;
@@ -1123,11 +1134,11 @@ endmodule
 module M10K_1000_8( 
     output reg signed [17:0] q,
     input signed      [17:0] d,
-    input [7:0] write_address, read_address,
+    input [8:0] write_address, read_address,
     input we, clk
 );
 
-    reg signed [17:0] mem [84:0]; /* synthesis ramstyle = "no_rw_check, M10K" */
+    reg signed [17:0] mem [511:0]; /* synthesis ramstyle = "no_rw_check, M10K" */
 
     always @ (posedge clk) begin
         if (we) begin
