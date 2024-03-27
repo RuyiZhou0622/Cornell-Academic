@@ -21,7 +21,7 @@
 
 //define the parameters
 #define ROWS 85
-#define COLS 85
+#define COLS 100
 #define H    0.125
 
 
@@ -44,8 +44,9 @@
 #define PIO_ROW               0x00000000
 #define PIO_COL               0x00000010
 #define PIO_DATA              0x00000020
-#define PIO_RST               0x00000030
+#define PIO_RST               0x00000030  //in
 #define PIO_RHOGAIN           0x00000040
+#define PIO_NUMROW            0x00000050
 //------------------------------------------------------------//
 
 // the light weight buss base
@@ -71,15 +72,35 @@ volatile unsigned int *pio_col = NULL;
 volatile signed int   *pio_data = NULL;
 volatile unsigned int *pio_rst = NULL;
 volatile signed int   *pio_rho_gain = NULL;
+volatile unsigned int *pio_numrow = NULL;
 
-
+//
+int min(int a, int b){
+    if (a > b)
+        return b;
+    else return a;
+}
 // define the height calculation
-float calculateHeight(int row, int col, float h, float step) {
-    float result;
+float calculateHeight(int row, int col, float h, float step, int hps_row) {
+    // float result;
+    // float temp;
+    // temp = h - fmax(abs(row - (ROWS-1) / 2), abs(col - (COLS-1) / 2)) * step;
+    // if(temp < 0){
+    //     temp = 0;
+    // }
+    // result = temp;
+    // return result;
+	float result;
     float temp;
-    temp = h - fmax(abs(row - (ROWS-1) / 2), abs(col - (COLS-1) / 2)) * step;
-    if(temp < 0){
-        temp = 0;
+ 
+    if(row <= hps_row/2 && col <= COLS/2){
+        temp = step * min( row, col);
+    } else if (row > hps_row/2 && col <= COLS/2){
+        temp = step * min(hps_row -1 - row, col);
+    }else if (row <= hps_row/2 && col > COLS/2){
+        temp = step * min( row, COLS -1 - col);
+    }else if (row > hps_row/2 && col > COLS/2){
+        temp = step * min( hps_row -1 - row, COLS -1 - col);
     }
     result = temp;
     return result;
@@ -109,24 +130,32 @@ int main(void)
 	pio_data = (int *)(h2p_lw_virtual_base + PIO_DATA);
 	pio_rst = (unsigned int *)(h2p_lw_virtual_base + PIO_RST); //in
 	pio_rho_gain = (int *)(h2p_lw_virtual_base + PIO_RHOGAIN);
+	pio_numrow = (unsigned int *)(h2p_lw_virtual_base + PIO_NUMROW);
 
 	//-------------------- initialize the matrix -------------------------------------------//
+
+	int numrow;
+	printf("Please input the num of rows:\n");
+	scanf("%d",&numrow);
+	*pio_numrow = numrow;
+
 	float strength;
 	printf("Please input the strength of the hit in range [0, 0.125]:\n");
 	scanf("%f",&strength);
 
-    float arr[ROWS][COLS];
-    float step = strength /(((ROWS-1)/2)) ;
+    float arr[numrow][COLS];
+    //float step = strength /(((ROWS-1)/2)) ;
+	float step = strength /((min(numrow-1,COLS-1)/2.0)) ;
 	int i, j;
 	
 	*pio_row = 0 ;
 	*pio_col = 0 ;
 	*pio_data = 0;
 
-	signed int rho_gain;
-	printf("Please input the rho_gain in range []:\n");
-	scanf("%d", &rho_gain);
-	*pio_rho_gain = int2fix(rho_gain);
+	float rho_gain;
+	printf("Please input the rho_gain in range [0, 0.49]:\n");
+	scanf("%f", &rho_gain);
+	*pio_rho_gain = float2fix(rho_gain);
 
 	while(1){
 		*pio_row = 0 ;
@@ -139,18 +168,18 @@ int main(void)
 			printf("Wait for reset release!\n");
 		}
 		// initialization
-		for ( i = 0; i < ROWS; ++i) {
+		for ( i = 0; i < numrow; ++i) {
 			for ( j = 0; j < COLS; ++j) {
-				arr[i][j] = calculateHeight(i, j, H, step); 
+				arr[i][j] = calculateHeight(i, j, H, step, numrow); 
 				*pio_row = i ;
 				*pio_col = j ;
 				*pio_data = float2fix(arr[i][j]);
-				usleep(1);
+				usleep(0.02);
 			}
 		}
 
 		// print
-		for ( i = 0; i < ROWS; ++i) {
+		for ( i = 0; i < numrow; ++i) {
 			for ( j = 0; j < COLS; ++j) {
 				printf("%f ", arr[i][j]);
 			}
