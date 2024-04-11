@@ -649,8 +649,6 @@ Computer_System The_System (
 );
 
 wire [31:0] timer_ff;
-// wire [23:0] real_time;
-// assign real_time = timer_ff / 100000; //ignore the fraction part to save hardware resources
 
 HexDigit Digit0(HEX0, timer_ff[3:0]);
 HexDigit Digit1(HEX1, timer_ff[7:4]);
@@ -829,10 +827,6 @@ module rho_calculaion (
     wire signed [17:0] b;
   
     assign a = u_n_ij >>> 4;
-    // signed_mult aaa (.out(a),
-    //                  .a(gten),
-    //                  .b(u_n_ij)
-    //                 );
 
     signed_mult bbb (.out(b),
                      .a(a),
@@ -840,7 +834,6 @@ module rho_calculaion (
                     );
 
     assign rho_eff = ((b + rho_0) < 18'b0_01111101011100001) ? (b + rho_0) :18'b0_01111101011100001 ;
-    //   assign rho_eff = b + rho_0 ;
 
 endmodule
 
@@ -958,7 +951,6 @@ module column_simulation #(parameter NUM = 0) (
 
     M10K_1000_8 un (.q(u_n_ijp1),
                     .d(in_wt_data_u_n),
-                    //.write_address(row),
                     .write_address((state == INITIAL_MEM) ? hps_row : row),
                     .read_address(rd_addr), //read the next one
                     .we(input_we_un),
@@ -967,7 +959,6 @@ module column_simulation #(parameter NUM = 0) (
 
     M10K_1000_8 un_1 (.q(u_nm1_ij),
                       .d(in_wt_data_u_nm1),
-                      //.write_address(row),
                       .write_address((state == INITIAL_MEM)? hps_row : row),
                       .read_address(row), //read the current one
                       .we(input_we_unm1),
