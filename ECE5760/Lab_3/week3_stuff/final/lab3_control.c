@@ -82,14 +82,7 @@ int min(int a, int b){
 }
 // define the height calculation
 float calculateHeight(int row, int col, float h, float step, int hps_row) {
-    // float result;
-    // float temp;
-    // temp = h - fmax(abs(row - (ROWS-1) / 2), abs(col - (COLS-1) / 2)) * step;
-    // if(temp < 0){
-    //     temp = 0;
-    // }
-    // result = temp;
-    // return result;
+ 
 	float result;
     float temp;
  
